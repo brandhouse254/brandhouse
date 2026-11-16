@@ -2,6 +2,7 @@
 
 import { del, list } from "@vercel/blob";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hashPassword, safeEqualText, temporaryPassword, verifyPassword } from "@/lib/auth/crypto";
@@ -20,6 +21,18 @@ import {
 } from "@/lib/cms/store";
 import { stableStringify } from "@/lib/cms/stable";
 import type { SiteContent } from "@/lib/cms/types";
+import { deleteEnquiry, updateEnquiry } from "@/lib/admin/enquiries";
+import {
+  defaultPrefs,
+  describeDevice,
+  notifyTeam,
+  notifyUser,
+  pushConfigured,
+  readSubscription,
+  removeSubscription,
+  saveSubscription,
+  type PushPrefs,
+} from "@/lib/admin/push";
 
 export type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -175,6 +188,17 @@ export async function updateProfile(_prev: FormState, form: FormData): Promise<F
 
 /* ───────────── Content ───────────── */
 
+const sectionNames: Record<SectionKey, string> = {
+  settings: "Contact & social",
+  hero: "The homepage hero",
+  intro: "The homepage introduction",
+  difference: "The homepage “Why Brand House” section",
+  about: "The About page",
+  services: "Services",
+  projects: "Work & projects",
+  testimonials: "Testimonials",
+};
+
 /**
  * Save one section. `baseline` is the section as the editor first loaded it;
  * if someone else has changed that same section since, the save is refused
@@ -207,6 +231,13 @@ export async function saveSection(
     const next = { ...content, [section]: parsed.data } as SiteContent;
     await writeContent(next, me.name || me.email);
     refreshSite();
+    after(() =>
+      notifyTeam(
+        "publishes",
+        { title: `${me.name || "A team member"} published a change`, body: `${sectionNames[section]} was updated on the website.`, url: "/admin/history", tag: "publish" },
+        { exceptUserId: me.id },
+      ),
+    );
     return { ok: true, value: parsed.data, savedAt: new Date().toISOString() };
   } catch (e) {
     return failure(e);
@@ -381,6 +412,123 @@ export async function removeTeamMember(id: string): Promise<Result> {
     });
     revalidatePath("/admin/team");
     return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+/* ───────────── Enquiries ───────────── */
+
+export async function setEnquiryRead(id: string, read: boolean): Promise<Result> {
+  try {
+    await assertUser();
+    await updateEnquiry(id, { read });
+    revalidatePath("/admin", "layout");
+    return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function removeEnquiry(id: string): Promise<Result> {
+  try {
+    await assertUser();
+    await deleteEnquiry(id);
+    revalidatePath("/admin", "layout");
+    return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+/* ───────────── App notifications ───────────── */
+
+const subscriptionSchema = z.object({
+  endpoint: z.url().max(2000),
+  keys: z.object({ p256dh: z.string().min(10).max(500), auth: z.string().min(4).max(200) }),
+});
+
+export async function savePushSubscription(input: unknown, userAgent: string): Promise<Result<{ prefs: PushPrefs }>> {
+  try {
+    const me = await assertUser();
+    if (!pushConfigured()) return { ok: false, error: "Notifications aren't set up on the server yet." };
+    const sub = subscriptionSchema.safeParse(input);
+    if (!sub.success) return { ok: false, error: "This device sent an invalid notification subscription." };
+    const existing = await readSubscription(sub.data.endpoint);
+    const saved = await saveSubscription({
+      userId: me.id,
+      endpoint: sub.data.endpoint,
+      keys: sub.data.keys,
+      device: describeDevice(String(userAgent).slice(0, 400)),
+      prefs: existing?.userId === me.id ? existing.prefs : defaultPrefs,
+    });
+    return { ok: true, prefs: saved.prefs };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function getPushPrefs(endpoint: string): Promise<Result<{ prefs: PushPrefs | null }>> {
+  try {
+    const me = await assertUser();
+    const sub = await readSubscription(endpoint);
+    return { ok: true, prefs: sub && sub.userId === me.id ? sub.prefs : null };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function updatePushPrefs(endpoint: string, prefs: PushPrefs): Promise<Result> {
+  try {
+    const me = await assertUser();
+    const sub = await readSubscription(endpoint);
+    if (!sub || sub.userId !== me.id) return { ok: false, error: "Turn notifications on for this device first." };
+    await saveSubscription({ ...sub, prefs: { enquiries: Boolean(prefs.enquiries), publishes: Boolean(prefs.publishes) } });
+    return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<Result> {
+  try {
+    const me = await assertUser();
+    const sub = await readSubscription(endpoint);
+    if (sub && sub.userId === me.id) await removeSubscription(endpoint);
+    return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function sendTestNotification(): Promise<Result<{ devices: number }>> {
+  try {
+    const me = await assertUser();
+    const devices = await notifyUser(me.id, {
+      title: "Notifications are working",
+      body: "You'll hear about new website enquiries here.",
+      url: "/admin",
+      tag: "test",
+    });
+    return { ok: true, devices };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+/* ───────────── YouTube preview ───────────── */
+
+/** Title and channel of a public YouTube video, via YouTube's oEmbed (no API key). */
+export async function youtubeDetails(url: string): Promise<Result<{ title: string; author: string }>> {
+  try {
+    await assertUser();
+    if (!/^https:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(url)) return { ok: false, error: "Not a YouTube link." };
+    const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return { ok: false, error: res.status === 401 || res.status === 403 ? "This video is private or can't be embedded." : "YouTube couldn't find that video." };
+    const data = (await res.json()) as { title?: string; author_name?: string };
+    return { ok: true, title: data.title ?? "", author: data.author_name ?? "" };
   } catch (e) {
     return failure(e);
   }

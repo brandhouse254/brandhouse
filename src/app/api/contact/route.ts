@@ -1,5 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { siteConfig } from "@/config/site";
+import { saveEnquiry, updateEnquiry } from "@/lib/admin/enquiries";
+import { notifyTeam } from "@/lib/admin/push";
 import {
   enquirySchema,
   spamFieldsSchema,
@@ -11,14 +13,15 @@ import {
 /**
  * Project enquiry endpoint.
  *
- * Delivery uses the Resend email API (https://resend.com) over HTTPS, so no SDK
- * is required. Configure on the server only (never NEXT_PUBLIC_):
+ * Every enquiry is saved to the admin inbox (/admin/enquiries) and the team
+ * gets a push notification on the installed admin app. An email copy is also
+ * sent when the Resend email API (https://resend.com) is configured:
  *   RESEND_API_KEY      — API key from Resend
  *   CONTACT_TO_EMAIL    — inbox that receives enquiries (comma-separate several)
- *   CONTACT_FROM_EMAIL  — verified sender, e.g. "Brand House <enquiries@brandhouse.co.ke>"
+ *   CONTACT_FROM_EMAIL  — verified sender
  *
- * If any are missing the endpoint answers 503 "not_configured" and the form
- * tells the visitor plainly that the message was not sent.
+ * The visitor sees success once the enquiry is stored or emailed; if neither
+ * worked they are told plainly that it was not sent.
  */
 
 export const runtime = "nodejs";
@@ -122,55 +125,61 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Configuration
+  const enquiry = parsed.data;
+
+  // 3. Save to the admin inbox
+  let stored = null;
+  try {
+    stored = await saveEnquiry(enquiry);
+  } catch (err) {
+    console.error("[contact] Could not save enquiry to the inbox:", err);
+  }
+
+  // 4. Email copy (optional)
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.CONTACT_TO_EMAIL;
   const from = process.env.CONTACT_FROM_EMAIL;
-  if (!apiKey || !to || !from) {
-    console.error("[contact] Enquiry not sent: RESEND_API_KEY, CONTACT_TO_EMAIL or CONTACT_FROM_EMAIL is not set.");
-    return json(
-      {
-        ok: false,
-        code: "not_configured",
-        message:
-          "Online enquiries are not switched on yet. Please try again later.",
-      },
-      503,
-    );
+  let emailed = false;
+  if (apiKey && to && from) {
+    const { text, html } = buildEmail(enquiry);
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from,
+          to: to.split(",").map((s) => s.trim()).filter(Boolean),
+          reply_to: enquiry.email,
+          subject: `Project enquiry: ${enquiry.organisation} (${enquiry.services.join(", ")})`,
+          text,
+          html,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      emailed = res.ok;
+      if (!res.ok) console.error(`[contact] Resend responded ${res.status}: ${(await res.text().catch(() => "")).slice(0, 500)}`);
+    } catch (err) {
+      console.error("[contact] Email delivery error:", err);
+    }
   }
 
-  // 4. Delivery
-  const enquiry = parsed.data;
-  const { text, html } = buildEmail(enquiry);
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: to.split(",").map((s) => s.trim()).filter(Boolean),
-        reply_to: enquiry.email,
-        subject: `Project enquiry: ${enquiry.organisation} (${enquiry.services.join(", ")})`,
-        text,
-        html,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.error(`[contact] Resend responded ${res.status}: ${detail.slice(0, 500)}`);
-      return json(
-        { ok: false, code: "delivery_failed", message: "Your enquiry could not be delivered just now. Try again in a minute." },
-        502,
-      );
-    }
-  } catch (err) {
-    console.error("[contact] Delivery error:", err);
+  if (!stored && !emailed) {
     return json(
       { ok: false, code: "delivery_failed", message: "Your enquiry could not be delivered just now. Try again in a minute." },
       502,
     );
   }
+
+  // 5. Tell the team (after the visitor has their answer)
+  after(async () => {
+    if (stored && emailed) await updateEnquiry(stored.id, { emailed: true }).catch(() => undefined);
+    await notifyTeam("enquiries", {
+      title: `New enquiry from ${enquiry.name}`,
+      body: `${enquiry.organisation} · ${enquiry.services.join(", ")} · ${enquiry.budget}`,
+      url: stored ? `/admin/enquiries/${stored.id}` : "/admin/enquiries",
+      tag: stored ? `enquiry-${stored.id}` : undefined,
+    });
+  });
 
   return json({ ok: true }, 200);
 }

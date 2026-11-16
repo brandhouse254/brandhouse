@@ -101,7 +101,7 @@ function HeroForm({ ed }: { ed: ReturnType<typeof useSectionEditor<HeroContent>>
 
 function HeroPreview({ hero }: { hero: HeroContent }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-ink text-white shadow-[0_10px_40px_-12px_rgba(17,17,17,0.45)]">
+    <div className="relative overflow-hidden rounded-2xl bg-[#0b0b0c] text-[#fff] shadow-[0_10px_40px_-12px_rgba(17,17,17,0.45)]">
       <div className="relative aspect-[16/8] min-h-64">
         {hero.video?.src ? (
           <video key={hero.video.src} src={hero.video.src} poster={hero.image.src} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover" />
@@ -110,10 +110,10 @@ function HeroPreview({ hero }: { hero: HeroContent }) {
           <img src={hero.image.src} alt="" className="absolute inset-0 size-full object-cover" />
         ) : null}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.45)_0%,rgba(17,17,17,0.1)_35%,rgba(17,17,17,0.85)_100%)]" />
-        <span className="absolute left-4 top-4 rounded-full bg-white/15 px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] backdrop-blur">Live preview</span>
-        {hero.timecode ? <span className="absolute right-5 top-4 font-display text-xs tabular-nums text-white/60">{hero.timecode}</span> : null}
+        <span className="absolute left-4 top-4 rounded-full bg-[#fff]/15 px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] backdrop-blur">Live preview</span>
+        {hero.timecode ? <span className="absolute right-5 top-4 font-display text-xs tabular-nums text-[#fff]/60">{hero.timecode}</span> : null}
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-          {hero.eyebrow ? <p className="font-display text-sm text-white/80">{hero.eyebrow}</p> : null}
+          {hero.eyebrow ? <p className="font-display text-sm text-[#fff]/80">{hero.eyebrow}</p> : null}
           <p className="mt-2 font-display text-[clamp(1.8rem,4.2vw,3.4rem)] font-semibold leading-[0.95] tracking-[-0.04em]">
             {hero.line1}
             {hero.line2 ? (
@@ -124,10 +124,10 @@ function HeroPreview({ hero }: { hero: HeroContent }) {
             ) : null}
           </p>
           <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-            <p className="max-w-md text-sm text-white/75">{hero.lead}</p>
+            <p className="max-w-md text-sm text-[#fff]/75">{hero.lead}</p>
             <div className="flex gap-2">
-              <span className="rounded-full bg-accent px-4 py-2 text-xs font-medium text-ink">{hero.primaryCta.label}</span>
-              <span className="rounded-full px-4 py-2 text-xs font-medium ring-1 ring-white/40">{hero.secondaryCta.label}</span>
+              <span className="rounded-full bg-accent px-4 py-2 text-xs font-medium text-[#111]">{hero.primaryCta.label}</span>
+              <span className="rounded-full px-4 py-2 text-xs font-medium ring-1 ring-[#fff]/40">{hero.secondaryCta.label}</span>
             </div>
           </div>
         </div>

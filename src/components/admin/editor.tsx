@@ -113,10 +113,11 @@ export function EditorBar<T>({
 }) {
   const { dirty, pending, state, save, discard } = editor;
   return (
-    <div className="sticky top-0 z-30 -mx-4 mb-6 border-b border-ink/10 bg-paper/90 px-4 py-4 backdrop-blur-md sm:-mx-8 sm:px-8">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+    <>
+    <div className="sticky top-[calc(3rem+max(0.75rem,env(safe-area-inset-top)))] z-30 -mx-4 mb-6 border-b border-ink/10 bg-paper/90 px-4 py-3 backdrop-blur-md sm:-mx-8 sm:px-8 md:py-4 lg:top-0">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">{title}</h1>
+          <h1 className="truncate font-display text-xl font-semibold tracking-[-0.02em] md:text-2xl">{title}</h1>
           {description ? <p className="mt-0.5 text-sm text-mute-2">{description}</p> : null}
         </div>
         <Status dirty={dirty} pending={pending} state={state} />
@@ -131,13 +132,15 @@ export function EditorBar<T>({
               <ExternalLink className="size-4" /> <span className="hidden sm:inline">View</span>
             </Link>
           ) : null}
-          <Button variant="ghost" onClick={discard} disabled={!dirty || pending}>
-            <RotateCcw className="size-4" /> <span className="hidden sm:inline">Discard</span>
-          </Button>
-          <Button variant="primary" onClick={() => void save()} disabled={!dirty || pending}>
-            {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            {pending ? "Publishing…" : "Save & publish"}
-          </Button>
+          <div className="hidden items-center gap-2 md:flex">
+            <Button variant="ghost" onClick={discard} disabled={!dirty || pending}>
+              <RotateCcw className="size-4" /> Discard
+            </Button>
+            <Button variant="primary" onClick={() => void save()} disabled={!dirty || pending}>
+              {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {pending ? "Publishing…" : "Save & publish"}
+            </Button>
+          </div>
         </div>
       </div>
       {state.kind === "error" ? (
@@ -147,6 +150,22 @@ export function EditorBar<T>({
         </div>
       ) : null}
     </div>
+
+    {/* Phones: Save sits above the bottom tabs, only while there is something to save. */}
+    {dirty || pending ? (
+      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur-md md:hidden">
+        <div className="mx-auto flex max-w-lg items-center gap-3">
+          <Button variant="ghost" onClick={discard} disabled={pending} className="shrink-0">
+            <RotateCcw className="size-4" /> Discard
+          </Button>
+          <Button variant="accent" onClick={() => void save()} disabled={pending} className="flex-1">
+            {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            {pending ? "Publishing…" : "Save & publish"}
+          </Button>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
 

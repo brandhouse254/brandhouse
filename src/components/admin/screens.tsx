@@ -146,7 +146,7 @@ export function MediaScreen() {
               ) : item.kind === "video" ? (
                 <video src={`${item.url}#t=0.5`} muted preload="metadata" className="size-full object-cover" />
               ) : null}
-              <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-ink/75 px-2 py-0.5 text-[0.7rem] font-medium text-white">
+              <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#000]/70 px-2 py-0.5 text-[0.7rem] font-medium text-[#fff]">
                 {item.kind === "video" ? <Film className="size-3" /> : <ImageIcon className="size-3" />}
                 {formatBytes(item.size)}
               </span>

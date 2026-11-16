@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Briefcase, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { workCategories, workCategoryLabels, type Project, type ProjectImage } from "@/lib/cms/types";
+import { youtubeId, youtubeThumbnail } from "@/lib/cms/public";
 import { EditorBar, useSectionEditor } from "../editor";
 import { ImageField, VideoField } from "../media";
 import { Badge, Button, Card, Chips, EmptyState, Grid, IconButton, Repeater, StringList, TextArea, TextField, Toggle } from "../ui";
@@ -212,7 +213,7 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
         editor={ed}
         viewHref={!isNew && p.published ? `/work/${p.slug}` : undefined}
         extra={
-          <Button variant="ghost" onClick={remove} className="text-red-700 hover:bg-red-50">
+          <Button variant="danger" onClick={remove}>
             <Trash2 className="size-4" /> <span className="hidden sm:inline">Delete</span>
           </Button>
         }
@@ -289,13 +290,27 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
             />
           </Card>
 
-          <Card title="Video (optional)" description="Upload a video file, or paste a YouTube or Vimeo link. Links don't use your storage and play smoothly everywhere.">
+          <Card title="Video (optional)" description="Paste a YouTube or Vimeo link (recommended: it plays smoothly everywhere and doesn't use your storage), or upload a video file.">
             <VideoField
               label="Video"
               value={p.video?.src ?? ""}
               allowLinks
               warnAboveBytes={80 * 1024 * 1024}
               onChange={(src) => set({ video: src ? { src, poster: p.video?.poster ?? p.cover.src, title: p.video?.title ?? p.title } : null })}
+              extra={
+                p.video && youtubeId(p.video.src) ? (
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      set({
+                        cover: { src: youtubeThumbnail(youtubeId(p.video!.src)!), alt: p.cover.alt || `Still from ${p.title || "the project video"}`, width: 480, height: 360 },
+                      })
+                    }
+                  >
+                    Use the video thumbnail as the cover image
+                  </Button>
+                ) : null
+              }
             />
             {p.video ? (
               <TextField label="Video title (for screen readers)" value={p.video.title} onChange={(title) => set({ video: { ...p.video!, title } })} />

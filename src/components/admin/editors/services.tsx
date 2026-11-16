@@ -66,7 +66,7 @@ export function ServicesList({ initial }: { initial: Service[] }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.image.src} alt="" className="size-full object-cover" />
                 ) : null}
-                <span className="absolute left-3 top-3 rounded-full bg-ink/80 px-2.5 py-1 font-display text-xs tabular-nums text-white">{s.number}</span>
+                <span className="absolute left-3 top-3 rounded-full bg-[#000]/75 px-2.5 py-1 font-display text-xs tabular-nums text-[#fff]">{s.number}</span>
               </div>
               <div className="flex items-start gap-3 p-4">
                 <div className="min-w-0 flex-1">
@@ -152,7 +152,7 @@ export function ServiceEditor({ services, slug }: { services: Service[]; slug: s
         editor={ed}
         viewHref={isNew ? undefined : `/services/${s.slug}`}
         extra={
-          <Button variant="ghost" onClick={remove} className="text-red-700 hover:bg-red-50">
+          <Button variant="danger" onClick={remove}>
             <Trash2 className="size-4" /> <span className="hidden sm:inline">Delete</span>
           </Button>
         }
@@ -239,7 +239,7 @@ export function ServiceEditor({ services, slug }: { services: Service[]; slug: s
           <TextArea label="Search description" value={s.meta.description} onChange={(description) => set({ meta: { ...s.meta, description } })} max={300} />
           <div className="rounded-xl bg-paper/60 p-4 ring-1 ring-ink/8">
             <p className="text-xs text-ink/50">brandhouse.co.ke › services › {s.slug || "…"}</p>
-            <p className="mt-1 truncate text-lg text-[#1a0dab]">{s.meta.title || s.title || "Search title"} | Brand House</p>
+            <p className="mt-1 truncate text-lg text-[#8ab4f8]">{s.meta.title || s.title || "Search title"} | Brand House</p>
             <p className="mt-0.5 line-clamp-2 text-sm text-ink/70">{s.meta.description || "Search description"}</p>
           </div>
         </Card>

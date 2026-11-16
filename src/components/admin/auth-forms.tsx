@@ -10,21 +10,21 @@ import { inputClass } from "./ui";
 export function AuthFrame({ title, intro, children }: { title: string; intro?: ReactNode; children: ReactNode }) {
   return (
     <div className="grid min-h-svh lg:grid-cols-[1.05fr_1fr]">
-      <div className="relative hidden overflow-hidden bg-ink p-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <div className="relative hidden overflow-hidden border-r border-[#fff]/8 bg-[#08080a] p-12 text-[#fff] lg:flex lg:flex-col lg:justify-between">
         <div aria-hidden className="absolute -right-32 -top-32 size-[34rem] rounded-full bg-accent/25 blur-3xl" />
         <div aria-hidden className="absolute -bottom-40 -left-24 size-[28rem] rounded-full bg-[#2a6f6a]/30 blur-3xl" />
-        <Logo className="relative h-14 text-white" />
+        <Logo className="relative h-14 text-[#fff]" />
         <div className="relative">
           <p className="font-display text-[clamp(2.2rem,3.6vw,3.4rem)] font-semibold leading-[1.02] tracking-[-0.035em]">
             Your website,
             <br />
             your story.
           </p>
-          <p className="mt-5 max-w-sm text-white/60">
+          <p className="mt-5 max-w-sm text-[#fff]/60">
             Update the homepage, publish new work and keep every page current, without touching code.
           </p>
         </div>
-        <p className="relative text-sm text-white/35">Brand House · Admin</p>
+        <p className="relative text-sm text-[#fff]/35">Brand House · Admin</p>
       </div>
       <div className="flex items-center justify-center px-5 py-14">
         <div className="w-full max-w-sm">

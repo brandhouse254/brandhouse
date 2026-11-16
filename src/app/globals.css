@@ -236,3 +236,45 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Admin (dark) ───────────────────────────────────────────────────────────
+   The admin reuses the site's utility classes but swaps the palette: "paper"
+   becomes the app background, "white" the card surface and "ink" the text.
+   Status colours are toned down so they sit on dark surfaces.
+   ────────────────────────────────────────────────────────────────────────── */
+.admin-theme {
+  color-scheme: dark;
+  --color-paper: #0d0d0f;
+  --color-paper-2: #131316;
+  --color-white: #17171a;
+  --color-ink: #f3f1ec;
+  --color-ink-2: #ffffff;
+  --color-mute: #77736d;
+  --color-mute-2: #9d9890;
+  --color-red-50: rgb(248 113 113 / 0.12);
+  --color-red-600: #f87171;
+  --color-red-700: #f87171;
+  --color-red-800: #fca5a5;
+  --color-emerald-50: rgb(52 211 153 / 0.12);
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #34d399;
+  --color-emerald-800: #6ee7b7;
+  --color-emerald-900: #a7f3d0;
+  --color-amber-50: rgb(251 191 36 / 0.12);
+  --color-amber-500: #fbbf24;
+  --color-amber-600: #f59e0b;
+  --color-amber-700: #fbbf24;
+  --color-amber-800: #fcd34d;
+  --color-amber-900: #fde68a;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body:has(.admin-theme) {
+  background: #0d0d0f;
+}
+
+.admin-theme ::selection {
+  background: var(--color-accent);
+  color: #111;
+}

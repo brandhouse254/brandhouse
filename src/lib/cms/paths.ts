@@ -23,6 +23,10 @@ export const paths = {
   content: () => `${dataRoot()}/content.json`,
   historyPrefix: () => `${dataRoot()}/history/`,
   users: () => `${dataRoot()}/users.bin`,
+  /** One encrypted file per enquiry, so two arriving together never overwrite each other. */
+  enquiriesPrefix: () => `${dataRoot()}/enquiries/`,
+  /** One encrypted file per device that turned notifications on. */
+  pushPrefix: () => `${dataRoot()}/push/`,
   /** Uploaded images and videos (previews keep theirs apart from the live library). */
   mediaPrefix: mediaPrefix(),
 };

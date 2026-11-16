@@ -21,7 +21,11 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     qualities: [75, 85],
     // Images uploaded through the admin are stored in Vercel Blob.
-    remotePatterns: [{ protocol: "https", hostname: "*.public.blob.vercel-storage.com" }],
+    // YouTube thumbnails can be used as project covers.
+    remotePatterns: [
+      { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
+      { protocol: "https", hostname: "i.ytimg.com" },
+    ],
   },
   async headers() {
     const headers = [...securityHeaders];

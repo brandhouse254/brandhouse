@@ -45,3 +45,12 @@ export function videoEmbedUrl(src: string): string | null {
   }
   return null;
 }
+
+/** The video ID of a YouTube link (watch, youtu.be, shorts or embed), or null. */
+export function youtubeId(src: string): string | null {
+  const m = src.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+  return m ? m[1] : null;
+}
+
+/** YouTube's own thumbnail for a video (no API key needed). */
+export const youtubeThumbnail = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;

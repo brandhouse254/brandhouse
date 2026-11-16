@@ -57,7 +57,7 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
 /* ───────────── Buttons ───────────── */
 
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger";
+  variant?: "primary" | "accent" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md";
 };
 
@@ -71,6 +71,7 @@ export function Button({ variant = "secondary", size = "md", className, ...rest 
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         size === "sm" ? "h-8 px-3 text-[0.82rem]" : "h-10 px-4 text-sm",
         variant === "primary" && "bg-ink text-white hover:bg-ink-2 shadow-[0_1px_0_rgba(255,255,255,0.15)_inset]",
+        variant === "accent" && "bg-accent font-semibold text-[#111] hover:bg-accent-deep",
         variant === "secondary" && "bg-white text-ink ring-1 ring-ink/15 hover:ring-ink/30 hover:bg-paper",
         variant === "ghost" && "text-ink/70 hover:bg-ink/6 hover:text-ink",
         variant === "danger" && "bg-white text-red-700 ring-1 ring-red-600/25 hover:bg-red-50",
@@ -99,7 +100,7 @@ export function IconButton({ label, className, ...rest }: React.ButtonHTMLAttrib
 /* ───────────── Fields ───────────── */
 
 export const inputClass =
-  "block w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-[0.95rem] text-ink shadow-[0_1px_1px_rgba(17,17,17,0.03)] placeholder:text-ink/35 transition-[border,box-shadow] hover:border-ink/25 focus:border-ink focus:outline-none focus:ring-4 focus:ring-accent/15";
+  "block w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-base text-ink sm:text-[0.95rem] shadow-[0_1px_1px_rgba(17,17,17,0.03)] placeholder:text-ink/35 transition-[border,box-shadow] hover:border-ink/25 focus:border-ink focus:outline-none focus:ring-4 focus:ring-accent/15";
 
 export function Field({
   label,

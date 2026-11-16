@@ -3,7 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { upload } from "@vercel/blob/client";
 import { Film, ImageIcon, Images, Link2, Loader2, Search, UploadCloud, X } from "lucide-react";
-import { listMedia, type MediaItem } from "@/lib/admin/actions";
+import { listMedia, youtubeDetails, type MediaItem } from "@/lib/admin/actions";
+import { videoEmbedUrl, youtubeId, youtubeThumbnail } from "@/lib/cms/public";
 import { cn } from "@/lib/cn";
 import { Button, Field, formatBytes, inputClass, TextField } from "./ui";
 
@@ -221,7 +222,7 @@ export function MediaLibrary({
                       <video src={`${item.url}#t=0.5`} muted preload="metadata" className="size-full object-cover" />
                     ) : null}
                     {item.kind === "video" ? (
-                      <span className="absolute left-2 top-2 rounded-full bg-ink/75 px-2 py-0.5 text-[0.7rem] font-medium text-white">Video</span>
+                      <span className="absolute left-2 top-2 rounded-full bg-[#000]/70 px-2 py-0.5 text-[0.7rem] font-medium text-[#fff]">Video</span>
                     ) : null}
                   </div>
                   <div className="px-2.5 py-2">
@@ -269,7 +270,7 @@ export function ImageField<T extends ImageValue>({
     <Field label={label} hint={hint}>
       <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <DropZone accept={IMAGE_TYPES} onFile={setFile} progress={progress} className="rounded-xl">
-          <div className={cn("relative overflow-hidden rounded-xl bg-[repeating-conic-gradient(#f1eee8_0_25%,#fff_0_50%)] bg-[length:16px_16px] ring-1 ring-ink/10", aspect)}>
+          <div className={cn("relative overflow-hidden rounded-xl bg-[repeating-conic-gradient(#1f1f23_0_25%,#17171a_0_50%)] bg-[length:16px_16px] ring-1 ring-ink/10", aspect)}>
             {value.src ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={value.src} alt="" className="absolute inset-0 size-full object-cover" />
@@ -333,6 +334,7 @@ export function VideoField({
   hint,
   allowLinks = false,
   warnAboveBytes = 15 * 1024 * 1024,
+  extra,
 }: {
   label: string;
   value: string;
@@ -340,11 +342,32 @@ export function VideoField({
   hint?: ReactNode;
   allowLinks?: boolean;
   warnAboveBytes?: number;
+  /** Extra controls shown under the link details (e.g. "use thumbnail as cover"). */
+  extra?: ReactNode;
 }) {
   const { send, progress, error } = useUploader();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [warning, setWarning] = useState<string | null>(null);
   const isLink = /youtube|youtu\.be|vimeo/i.test(value);
+  const embed = isLink ? videoEmbedUrl(value) : null;
+  const ytId = youtubeId(value);
+  const [details, setDetails] = useState<{ for: string; title: string; author: string; error?: string } | null>(null);
+
+  useEffect(() => {
+    if (!ytId) return;
+    let live = true;
+    const t = window.setTimeout(() => {
+      void youtubeDetails(value).then((r) => {
+        if (!live) return;
+        setDetails(r.ok ? { for: value, title: r.title, author: r.author } : { for: value, title: "", author: "", error: r.error });
+      });
+    }, 400);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [value, ytId]);
+  const info = details && details.for === value ? details : null;
 
   const setFile = async (f: File) => {
     setWarning(
@@ -360,17 +383,27 @@ export function VideoField({
     <Field label={label} hint={hint}>
       <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <DropZone accept={VIDEO_TYPES} onFile={setFile} progress={progress}>
-          <div className="relative aspect-video overflow-hidden rounded-xl bg-ink ring-1 ring-ink/10">
+          <div className="relative aspect-video overflow-hidden rounded-xl bg-[#000] ring-1 ring-ink/10">
             {value && !isLink ? (
               <video src={value} muted loop playsInline controls className="absolute inset-0 size-full object-cover" />
+            ) : embed ? (
+              <iframe
+                src={embed}
+                title="Video preview"
+                className="absolute inset-0 size-full"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/45">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[#fff]/45">
                 {isLink ? <Link2 className="size-8" aria-hidden /> : <Film className="size-8" aria-hidden />}
                 <span className="px-4 text-center text-xs">{isLink ? "Linked video (YouTube / Vimeo)" : "Drop a video here (MP4 or WebM)"}</span>
               </div>
             )}
             {progress !== null ? (
-              <div className="absolute inset-x-0 bottom-0 h-1.5 bg-white/20">
+              <div className="absolute inset-x-0 bottom-0 h-1.5 bg-[#fff]/20">
                 <div className="h-full bg-accent transition-[width]" style={{ width: `${progress}%` }} />
               </div>
             ) : null}
@@ -395,6 +428,23 @@ export function VideoField({
               onChange={(v) => onChange(v.trim())}
             />
           ) : null}
+          {ytId ? (
+            <div className="flex items-center gap-3 rounded-xl bg-paper/60 p-2.5 ring-1 ring-ink/8">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={youtubeThumbnail(ytId)} alt="" className="h-12 w-20 shrink-0 rounded-md object-cover" />
+              <div className="min-w-0 text-sm">
+                {info?.error ? (
+                  <p className="text-red-700">{info.error}</p>
+                ) : (
+                  <>
+                    <p className="truncate font-medium">{info?.title || "Checking video…"}</p>
+                    {info?.author ? <p className="truncate text-xs text-mute-2">YouTube · {info.author}</p> : null}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : null}
+          {extra}
           {warning ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">{warning}</p> : null}
           {error ? <p className="text-sm text-red-700">{error}</p> : null}
         </div>
