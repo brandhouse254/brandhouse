@@ -58,12 +58,17 @@ async function writeUsers(users: AdminUser[]) {
   });
 }
 
-/** Read, change and write the user list in one step. */
+/** Read, change and write the user list in one step, then wait until the change is readable. */
 export async function updateUsers<T>(change: (users: AdminUser[]) => T | Promise<T>): Promise<T> {
   const { users } = await readUsers();
   const copy = users.map((u) => ({ ...u }));
   const result = await change(copy);
   await writeUsers(copy);
+  const expected = JSON.stringify(copy);
+  for (let i = 0; i < 20; i++) {
+    if (JSON.stringify((await readUsers()).users) === expected) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
   return result;
 }
 

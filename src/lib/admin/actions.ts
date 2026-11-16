@@ -1,7 +1,7 @@
 "use server";
 
 import { del, list } from "@vercel/blob";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hashPassword, safeEqualText, temporaryPassword, verifyPassword } from "@/lib/auth/crypto";
@@ -10,6 +10,7 @@ import { newUser, normaliseEmail, readUsers, toPublic, updateUsers, type PublicU
 import { blobEnabled, paths } from "@/lib/cms/paths";
 import { describeIssue, sectionSchemas, type SectionKey } from "@/lib/cms/schema";
 import {
+  CONTENT_TAG,
   ContentConflictError,
   listHistory,
   readContent,
@@ -28,8 +29,12 @@ function failure(e: unknown): { ok: false; error: string } {
   return { ok: false, error: e instanceof Error && e.message ? e.message : "Something went wrong. Please try again." };
 }
 
-/** Re-render every public page with the new content on its next visit. */
+/**
+ * Expire the cached content (the next visitor waits for fresh content rather
+ * than being served the old version) and re-render every public page.
+ */
 function refreshSite() {
+  revalidateTag(CONTENT_TAG, { expire: 0 });
   revalidatePath("/", "layout");
 }
 
@@ -185,7 +190,13 @@ export async function saveSection(
     if (!schema) return { ok: false, error: "Unknown section." };
     const parsed = schema.safeParse(value);
     if (!parsed.success) return { ok: false, error: describeIssue(parsed.error) };
-    const { content } = await readContent();
+    // A read straight after someone's save can briefly return the version
+    // before it, so look a few times before calling it a real conflict.
+    let { content } = await readContent();
+    for (let i = 0; i < 6 && stableStringify(content[section]) !== baseline; i++) {
+      await new Promise((r) => setTimeout(r, 400));
+      ({ content } = await readContent());
+    }
     const currentText = stableStringify(content[section]);
     if (currentText !== baseline) {
       console.warn("[admin] save conflict", section, firstDifference(JSON.parse(baseline), JSON.parse(currentText)));

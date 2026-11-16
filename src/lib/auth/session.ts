@@ -32,10 +32,17 @@ export async function endSession() {
 export const currentUser = cache(async (): Promise<AdminUser | null> => {
   const payload = verifySigned<SessionPayload>((await cookies()).get(COOKIE)?.value);
   if (!payload || payload.exp < Date.now() / 1000) return null;
-  const { users } = await readUsers();
-  const user = users.find((u) => u.id === payload.uid);
-  if (!user || !user.active || user.sessionVersion !== payload.v) return null;
-  return user;
+  // Right after an account change (new account, new password) storage can
+  // briefly return the previous user list. A cookie that is newer than what
+  // we read means the read is behind, so read again for a moment.
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { users } = await readUsers();
+    const user = users.find((u) => u.id === payload.uid);
+    if (user && user.sessionVersion === payload.v) return user.active ? user : null;
+    if (user && user.sessionVersion > payload.v) return null; // signed out elsewhere
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return null;
 });
 
 /** For admin pages: sends visitors who aren't signed in to the login screen. */

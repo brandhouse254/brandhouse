@@ -1,4 +1,5 @@
 import { del, get, list, put } from "@vercel/blob";
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { defaultContent } from "./defaults";
 import { blobEnabled, paths } from "./paths";
@@ -45,12 +46,32 @@ export async function readContent(): Promise<{ content: SiteContent; etag: strin
   return { content: withDefaults(found.data as Partial<SiteContent>), etag: found.etag };
 }
 
+export const CONTENT_TAG = "cms-content";
+
+const cachedContent = unstable_cache(async () => (await readContent()).content, ["cms-content-v2"], {
+  tags: [CONTENT_TAG],
+});
+
 /**
- * Content for public pages. Pages are prerendered and served from Vercel's
- * cache; every publish from the admin re-renders them (revalidatePath in
- * src/lib/admin/actions.ts), so this read only runs when a page is rebuilt.
+ * Content for public pages. Cached (and the pages built from it) until the
+ * admin publishes; see refreshSite in src/lib/admin/actions.ts.
  */
-export const getContent = cache(async (): Promise<SiteContent> => (await readContent()).content);
+export const getContent = cache(async (): Promise<SiteContent> => cachedContent());
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Storage can briefly return the previous version right after a write. Poll
+ * until the new version is readable, so pages rebuilt next see the change.
+ */
+async function waitUntilReadable(updatedAt: string) {
+  for (let i = 0; i < 20; i++) {
+    const { content } = await readContent();
+    if (content.updatedAt === updatedAt) return;
+    await sleep(250);
+  }
+  console.warn("[cms] new content not readable after 5s; pages may need another publish");
+}
 
 export class ContentConflictError extends Error {
   constructor() {
@@ -62,7 +83,7 @@ export class ContentConflictError extends Error {
  * Write a whole new content document. Callers check for conflicting edits
  * first (see saveSection); the write itself simply replaces the file.
  */
-export async function writeContent(next: SiteContent, editor: string): Promise<void> {
+export async function writeContent(next: SiteContent, editor: string): Promise<SiteContent> {
   if (!blobEnabled()) throw new Error("Storage isn't connected (BLOB_READ_WRITE_TOKEN is missing).");
   const doc: SiteContent = { ...next, version: 1, updatedAt: new Date().toISOString(), updatedBy: editor };
   const body = JSON.stringify(doc);
@@ -91,6 +112,9 @@ export async function writeContent(next: SiteContent, editor: string): Promise<v
   } catch (e) {
     console.error("[cms] history snapshot failed", e);
   }
+
+  await waitUntilReadable(doc.updatedAt!);
+  return doc;
 }
 
 export type HistoryEntry = { url: string; savedAt: string; editor: string; size: number };
