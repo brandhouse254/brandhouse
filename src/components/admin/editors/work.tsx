@@ -78,7 +78,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
   return (
     <>
       <EditorBar
-        title="Work & projects"
+        title="Portfolio"
         description="Case studies on /work. The first four published projects are featured on the homepage."
         editor={ed}
         viewHref="/work"

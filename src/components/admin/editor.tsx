@@ -8,6 +8,7 @@ import { saveSection } from "@/lib/admin/actions";
 import type { SectionKey } from "@/lib/cms/schema";
 import { stableStringify } from "@/lib/cms/stable";
 import { cn } from "@/lib/cn";
+import { useUnsavedFlag } from "@/lib/admin/dirty";
 import { Button } from "./ui";
 
 type SaveState = { kind: "idle" } | { kind: "saved"; at: string } | { kind: "error"; message: string };
@@ -38,6 +39,7 @@ export function useSectionEditor<T>(
   });
 
   const dirty = useMemo(() => stableStringify(value) !== baseline, [value, baseline]);
+  useUnsavedFlag(dirty);
 
   const save = useCallback(
     (override?: T) =>
@@ -114,7 +116,7 @@ export function EditorBar<T>({
   const { dirty, pending, state, save, discard } = editor;
   return (
     <>
-    <div className="sticky top-[calc(3rem+max(0.75rem,env(safe-area-inset-top)))] z-30 -mx-4 mb-6 border-b border-ink/10 bg-paper/90 px-4 py-3 backdrop-blur-md sm:-mx-8 sm:px-8 md:py-4 lg:top-0">
+    <div className="sticky top-[calc(3.2rem+max(0.6rem,env(safe-area-inset-top)))] z-30 -mx-4 mb-6 border-b border-ink/10 bg-paper/90 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 md:py-4 lg:top-0 lg:-mx-10 lg:px-10">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-xl font-semibold tracking-[-0.02em] md:text-2xl">{title}</h1>

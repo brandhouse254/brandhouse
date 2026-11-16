@@ -10,11 +10,14 @@ import { blobEnabled, paths } from "@/lib/cms/paths";
  * notifications on is stored as its own encrypted file.
  */
 
-export type NotifyKind = "enquiries" | "publishes";
+export type NotifyKind = "enquiries" | "publishes" | "tasks" | "reminders";
 
 export type PushPrefs = Record<NotifyKind, boolean>;
 
-export const defaultPrefs: PushPrefs = { enquiries: true, publishes: false };
+export const defaultPrefs: PushPrefs = { enquiries: true, publishes: false, tasks: true, reminders: true };
+
+/** Devices saved before a kind existed get that kind's default. */
+export const withDefaults = (prefs: Partial<PushPrefs> | undefined): PushPrefs => ({ ...defaultPrefs, ...(prefs ?? {}) });
 
 export type DeviceSubscription = {
   userId: string;
@@ -32,8 +35,10 @@ const privateKey = () => process.env.VAPID_PRIVATE_KEY ?? "";
 
 export const pushConfigured = () => Boolean(publicKey() && privateKey() && blobEnabled());
 
-const fileFor = (endpoint: string) =>
-  `${paths.pushPrefix()}${createHash("sha256").update(endpoint).digest("hex").slice(0, 32)}.bin`;
+/** Short, stable id for a device's subscription (never exposes the endpoint itself). */
+export const deviceId = (endpoint: string) => createHash("sha256").update(endpoint).digest("hex").slice(0, 32);
+
+const fileFor = (endpoint: string) => `${paths.pushPrefix()}${deviceId(endpoint)}.bin`;
 
 /** "iPhone", "Android phone", "Mac", … from the browser's user agent. */
 export function describeDevice(ua: string): string {
@@ -104,7 +109,7 @@ export async function notifyTeam(kind: NotifyKind, message: PushMessage, options
   try {
     const [subs, { users }] = await Promise.all([listSubscriptions(), readUsers()]);
     const active = new Set(users.filter((u) => u.active).map((u) => u.id));
-    const targets = subs.filter((s) => active.has(s.userId) && s.userId !== options.exceptUserId && (s.prefs ?? defaultPrefs)[kind]);
+    const targets = subs.filter((s) => active.has(s.userId) && s.userId !== options.exceptUserId && withDefaults(s.prefs)[kind]);
     await sendTo(targets, message);
   } catch (e) {
     console.error("[push] notifyTeam failed", e);
@@ -117,4 +122,17 @@ export async function notifyUser(userId: string, message: PushMessage) {
   const subs = (await listSubscriptions()).filter((s) => s.userId === userId);
   await sendTo(subs, message);
   return subs.length;
+}
+
+/** Notify specific people (e.g. whoever a task is assigned to), respecting each device's settings. */
+export async function notifyUsers(userIds: string[], kind: NotifyKind, message: PushMessage) {
+  const ids = new Set(userIds.filter(Boolean));
+  if (!ids.size || !pushConfigured()) return;
+  try {
+    const [subs, { users }] = await Promise.all([listSubscriptions(), readUsers()]);
+    const active = new Set(users.filter((u) => u.active).map((u) => u.id));
+    await sendTo(subs.filter((s) => ids.has(s.userId) && active.has(s.userId) && withDefaults(s.prefs)[kind]), message);
+  } catch (e) {
+    console.error("[push] notifyUsers failed", e);
+  }
 }

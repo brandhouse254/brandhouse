@@ -5,6 +5,8 @@ import { Bell, BellOff, Check, Download, Loader2, PlusSquare, Share, Smartphone,
 import {
   deletePushSubscription,
   getPushPrefs,
+  listMyDevices,
+  removeMyDevice,
   savePushSubscription,
   sendTestNotification,
   updatePushPrefs,
@@ -58,6 +60,16 @@ function vapidKey(): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+// Once per page load, make sure the server knows this device belongs to whoever is signed in,
+// so every phone, tablet and computer on an account gets its notifications.
+let synced = false;
+const SYNC_KEY = "bh-push-synced";
+/** Set by the shell: who is signed in, so a shared computer re-registers for the new person. */
+let account = "";
+export function setPushAccount(id: string) {
+  account = id;
+}
+
 async function registration() {
   return navigator.serviceWorker.register("/admin/sw.js", { scope: "/admin/" });
 }
@@ -89,6 +101,22 @@ export function useAppStatus() {
       const reg = await registration();
       const sub = await reg.pushManager.getSubscription();
       const perm = Notification.permission;
+      if (sub && perm === "granted" && !synced) {
+        synced = true;
+        // At most every few days per device (each check is a storage write).
+        let last = "";
+        try {
+          last = localStorage.getItem(SYNC_KEY) ?? "";
+        } catch {}
+        const [who, when] = last.split("|");
+        if (who !== `${sub.endpoint.slice(-24)}:${account}` || Date.now() - Number(when || 0) > 3 * 86_400_000) {
+          void savePushSubscription(sub.toJSON(), navigator.userAgent)
+            .then((r) => {
+              if (r.ok) localStorage.setItem(SYNC_KEY, `${sub.endpoint.slice(-24)}:${account}|${Date.now()}`);
+            })
+            .catch(() => undefined);
+        }
+      }
       setStatus({
         ...base,
         push: perm === "denied" ? "denied" : sub ? "on" : perm === "granted" ? "off" : "default",
@@ -232,7 +260,7 @@ export function AppSetupPrompt() {
                 {needsInstall ? "Get the admin app" : "Turn on notifications"}
               </h2>
               <p className="text-sm text-[#9d9890]">
-                {needsInstall ? "Open the admin from your Home Screen, full screen." : "Know the moment a new enquiry comes in."}
+                {needsInstall ? "Open the admin from your Home Screen, full screen." : "New leads, tasks and reminders, on every device you use."}
               </p>
             </div>
           </div>
@@ -271,7 +299,7 @@ export function AppSetupPrompt() {
               <p className="mb-1 flex items-center gap-2 text-sm font-medium">
                 <Bell className="size-4 text-accent" aria-hidden /> Notifications
               </p>
-              <p className="mb-3 text-sm text-[#9d9890]">New website enquiries arrive here straight away, with the client&apos;s details one tap away.</p>
+              <p className="mb-3 text-sm text-[#9d9890]">New leads, tasks assigned to you and the 7am reminder arrive straight away. Turn this on in each phone, tablet or computer you use.</p>
               <Button
                 variant="primary"
                 className="w-full"
@@ -380,7 +408,9 @@ export function AppSettings() {
 
       {app.push === "on" && prefs ? (
         <div className="space-y-3">
-          <Toggle label="New website enquiries" checked={prefs.enquiries} onChange={(v) => void setPref("enquiries", v)} hint="When someone sends the form on the Contact page." />
+          <Toggle label="New leads" checked={prefs.enquiries} onChange={(v) => void setPref("enquiries", v)} hint="When someone sends the form on the Contact page." />
+          <Toggle label="Tasks and assignments" checked={prefs.tasks} onChange={(v) => void setPref("tasks", v)} hint="When a task or lead is assigned to you, or someone comments on your task." />
+          <Toggle label="Morning reminders" checked={prefs.reminders} onChange={(v) => void setPref("reminders", v)} hint="At 7am: tasks due today or late, follow-ups due, and unpaid invoices past their due date." />
           <Toggle label="Changes published by the team" checked={prefs.publishes} onChange={(v) => void setPref("publishes", v)} hint="When someone else publishes an edit to the website." />
           <Button
             size="sm"
@@ -393,7 +423,54 @@ export function AppSettings() {
           </Button>
         </div>
       ) : null}
+      <MyDevices endpoint={app.endpoint} push={app.push} />
       {message ? <p className={cn("rounded-xl px-3 py-2 text-sm", message.startsWith("Test sent") ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800")}>{message}</p> : null}
+    </div>
+  );
+}
+
+/** All of this person's devices that receive notifications. */
+function MyDevices({ endpoint, push }: { endpoint: string | null; push: Status["push"] }) {
+  const [devices, setDevices] = useState<{ id: string; device: string; since: string; current: boolean }[] | null>(null);
+  const load = useCallback(async () => {
+    const r = await listMyDevices(endpoint);
+    if (r.ok) setDevices(r.devices);
+  }, [endpoint]);
+  useEffect(() => {
+    const id = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(id);
+  }, [load, push]);
+  if (!devices) return null;
+  return (
+    <div className="rounded-xl bg-paper/60 px-4 py-3 ring-1 ring-ink/8">
+      <p className="text-sm font-medium">Your devices getting notifications</p>
+      {devices.length ? (
+        <ul className="mt-2 divide-y divide-ink/8">
+          {devices.map((d) => (
+            <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span>
+                {d.device}
+                {d.current ? <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">This device</span> : null}
+                <span className="block text-xs text-mute-2">Since {new Date(d.since).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}</span>
+              </span>
+              {!d.current ? (
+                <button
+                  type="button"
+                  className="rounded-full px-3 py-1 text-xs text-ink/60 ring-1 ring-ink/15 hover:text-ink"
+                  onClick={async () => {
+                    await removeMyDevice(d.id);
+                    await load();
+                  }}
+                >
+                  Remove
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-xs text-mute-2">None yet. Turn notifications on above, and on each other phone, tablet or computer you sign in on.</p>
+      )}
     </div>
   );
 }

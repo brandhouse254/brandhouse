@@ -278,3 +278,13 @@ body:has(.admin-theme) {
   background: var(--color-accent);
   color: #111;
 }
+
+@keyframes bh-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* The installed admin app handles pull-to-refresh itself. */
+@media (display-mode: standalone) {
+  html:has(.admin-theme) { overscroll-behavior-y: none; }
+}

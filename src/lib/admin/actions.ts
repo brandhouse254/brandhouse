@@ -22,6 +22,8 @@ import {
 import { stableStringify } from "@/lib/cms/stable";
 import type { SiteContent } from "@/lib/cms/types";
 import { deleteEnquiry, updateEnquiry } from "@/lib/admin/enquiries";
+import { dbConfigured } from "@/lib/db";
+import { touchPulse } from "@/lib/biz/data";
 import {
   defaultPrefs,
   describeDevice,
@@ -31,6 +33,9 @@ import {
   readSubscription,
   removeSubscription,
   saveSubscription,
+  withDefaults,
+  deviceId,
+  listSubscriptions,
   type PushPrefs,
 } from "@/lib/admin/push";
 
@@ -49,6 +54,8 @@ function failure(e: unknown): { ok: false; error: string } {
 function refreshSite() {
   revalidateTag(CONTENT_TAG, { expire: 0 });
   revalidatePath("/", "layout");
+  // Let other open admin screens know to refresh.
+  if (dbConfigured()) after(() => touchPulse().catch(() => undefined));
 }
 
 const passwordRule = z
@@ -462,7 +469,7 @@ export async function savePushSubscription(input: unknown, userAgent: string): P
       device: describeDevice(String(userAgent).slice(0, 400)),
       prefs: existing?.userId === me.id ? existing.prefs : defaultPrefs,
     });
-    return { ok: true, prefs: saved.prefs };
+    return { ok: true, prefs: withDefaults(saved.prefs) };
   } catch (e) {
     return failure(e);
   }
@@ -472,7 +479,7 @@ export async function getPushPrefs(endpoint: string): Promise<Result<{ prefs: Pu
   try {
     const me = await assertUser();
     const sub = await readSubscription(endpoint);
-    return { ok: true, prefs: sub && sub.userId === me.id ? sub.prefs : null };
+    return { ok: true, prefs: sub && sub.userId === me.id ? withDefaults(sub.prefs) : null };
   } catch (e) {
     return failure(e);
   }
@@ -483,7 +490,15 @@ export async function updatePushPrefs(endpoint: string, prefs: PushPrefs): Promi
     const me = await assertUser();
     const sub = await readSubscription(endpoint);
     if (!sub || sub.userId !== me.id) return { ok: false, error: "Turn notifications on for this device first." };
-    await saveSubscription({ ...sub, prefs: { enquiries: Boolean(prefs.enquiries), publishes: Boolean(prefs.publishes) } });
+    await saveSubscription({
+      ...sub,
+      prefs: {
+        enquiries: Boolean(prefs.enquiries),
+        publishes: Boolean(prefs.publishes),
+        tasks: Boolean(prefs.tasks),
+        reminders: Boolean(prefs.reminders),
+      },
+    });
     return { ok: true };
   } catch (e) {
     return failure(e);
@@ -501,12 +516,42 @@ export async function deletePushSubscription(endpoint: string): Promise<Result> 
   }
 }
 
+/** Every device (phone, tablet, computer) where this person has notifications on. */
+export async function listMyDevices(currentEndpoint: string | null): Promise<
+  Result<{ devices: { id: string; device: string; since: string; current: boolean }[] }>
+> {
+  try {
+    const me = await assertUser();
+    const mine = (await listSubscriptions()).filter((s) => s.userId === me.id);
+    const current = currentEndpoint ? deviceId(currentEndpoint) : null;
+    return {
+      ok: true,
+      devices: mine
+        .map((s) => ({ id: deviceId(s.endpoint), device: s.device, since: s.createdAt, current: deviceId(s.endpoint) === current }))
+        .sort((a, b) => Number(b.current) - Number(a.current) || b.since.localeCompare(a.since)),
+    };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function removeMyDevice(id: string): Promise<Result> {
+  try {
+    const me = await assertUser();
+    const sub = (await listSubscriptions()).find((s) => s.userId === me.id && deviceId(s.endpoint) === id);
+    if (sub) await removeSubscription(sub.endpoint);
+    return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
 export async function sendTestNotification(): Promise<Result<{ devices: number }>> {
   try {
     const me = await assertUser();
     const devices = await notifyUser(me.id, {
       title: "Notifications are working",
-      body: "You'll hear about new website enquiries here.",
+      body: "You'll hear about new leads, tasks and reminders here.",
       url: "/admin",
       tag: "test",
     });

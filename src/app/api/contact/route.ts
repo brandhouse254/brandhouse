@@ -2,6 +2,8 @@ import { after, NextResponse } from "next/server";
 import { siteConfig } from "@/config/site";
 import { saveEnquiry, updateEnquiry } from "@/lib/admin/enquiries";
 import { notifyTeam } from "@/lib/admin/push";
+import { dbConfigured } from "@/lib/db";
+import { createLead, touchPulse } from "@/lib/biz/data";
 import {
   enquirySchema,
   spamFieldsSchema,
@@ -13,7 +15,7 @@ import {
 /**
  * Project enquiry endpoint.
  *
- * Every enquiry is saved to the admin inbox (/admin/enquiries) and the team
+ * Every enquiry becomes a lead in the admin (/admin/leads) and the team
  * gets a push notification on the installed admin app. An email copy is also
  * sent when the Resend email API (https://resend.com) is configured:
  *   RESEND_API_KEY      — API key from Resend
@@ -127,12 +129,22 @@ export async function POST(request: Request) {
 
   const enquiry = parsed.data;
 
-  // 3. Save to the admin inbox
+  // 3. Save as a lead (database), or to Blob storage if the database is unreachable
+  let leadId: string | null = null;
   let stored = null;
-  try {
-    stored = await saveEnquiry(enquiry);
-  } catch (err) {
-    console.error("[contact] Could not save enquiry to the inbox:", err);
+  if (dbConfigured()) {
+    try {
+      leadId = (await createLead({ source: "website", ...enquiry }))?.id ?? null;
+    } catch (err) {
+      console.error("[contact] Could not save the lead to the database:", err);
+    }
+  }
+  if (!leadId) {
+    try {
+      stored = await saveEnquiry(enquiry);
+    } catch (err) {
+      console.error("[contact] Could not save enquiry to the inbox:", err);
+    }
   }
 
   // 4. Email copy (optional)
@@ -163,7 +175,7 @@ export async function POST(request: Request) {
     }
   }
 
-  if (!stored && !emailed) {
+  if (!leadId && !stored && !emailed) {
     return json(
       { ok: false, code: "delivery_failed", message: "Your enquiry could not be delivered just now. Try again in a minute." },
       502,
@@ -173,11 +185,12 @@ export async function POST(request: Request) {
   // 5. Tell the team (after the visitor has their answer)
   after(async () => {
     if (stored && emailed) await updateEnquiry(stored.id, { emailed: true }).catch(() => undefined);
+    if (leadId) await touchPulse().catch(() => undefined);
     await notifyTeam("enquiries", {
-      title: `New enquiry from ${enquiry.name}`,
+      title: `New lead: ${enquiry.name}`,
       body: `${enquiry.organisation} · ${enquiry.services.join(", ")} · ${enquiry.budget}`,
-      url: stored ? `/admin/enquiries/${stored.id}` : "/admin/enquiries",
-      tag: stored ? `enquiry-${stored.id}` : undefined,
+      url: leadId ? `/admin/leads/${leadId}` : stored ? `/admin/enquiries/${stored.id}` : "/admin/leads",
+      tag: leadId ? `lead-${leadId}` : stored ? `enquiry-${stored.id}` : undefined,
     });
   });
 

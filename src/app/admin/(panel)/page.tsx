@@ -1,138 +1,391 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Briefcase, CheckCircle2, Circle, Home, Images, Inbox, Info, MessageSquareQuote, Phone, Sparkles } from "lucide-react";
-import { listEnquiries } from "@/lib/admin/enquiries";
+import {
+  ArrowUpRight,
+  Briefcase,
+  CheckCircle2,
+  Circle,
+  FilePlus2,
+  Home,
+  Images,
+  Info,
+  ListChecks,
+  Magnet,
+  MessageSquareQuote,
+  Phone,
+  Sparkles,
+  UserPlus,
+} from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
+import { dbConfigured } from "@/lib/db";
 import { readContent } from "@/lib/cms/store";
 import { activeSocialLinks, visibleProjects } from "@/lib/cms/public";
 import { timeAgoServer } from "@/lib/admin/time";
+import { listLeads, listProjects, todayKE } from "@/lib/biz/data";
+import { agendaFor, type Agenda } from "@/lib/biz/agenda";
+import { monthSnapshot } from "@/lib/biz/reports";
+import { kes, labelOf, leadStages, type Lead, type Project } from "@/lib/biz/types";
+import { dueLabel, Pill, stageTone } from "@/components/admin/biz/bits";
+import { TaskCheck } from "@/components/admin/biz/tasks";
+import { cn } from "@/lib/cn";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-const shortcuts = [
-  { href: "/admin/enquiries", label: "Enquiries", body: "Messages from the Contact page", icon: Inbox },
-  { href: "/admin/homepage", label: "Homepage", body: "Hero headline, image and video", icon: Home },
-  { href: "/admin/work/new", label: "Add a project", body: "Publish a new case study", icon: Briefcase },
-  { href: "/admin/services", label: "Services", body: "Divisions and their pages", icon: Sparkles },
-  { href: "/admin/about", label: "About page", body: "Story, approach and values", icon: Info },
-  { href: "/admin/testimonials", label: "Testimonials", body: "Client quotes", icon: MessageSquareQuote },
-  { href: "/admin/settings", label: "Contact & social", body: "Phone, WhatsApp, links", icon: Phone },
-  { href: "/admin/media", label: "Media library", body: "All uploaded images and videos", icon: Images },
-];
+function Card({ title, href, linkLabel, children, className }: { title: string; href?: string; linkLabel?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("flex min-w-0 flex-col rounded-3xl bg-white p-5 ring-1 ring-ink/10 sm:p-6", className)}>
+      <header className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-display text-base font-semibold tracking-[-0.01em]">{title}</h2>
+        {href ? (
+          <Link href={href} className="inline-flex items-center gap-1 text-sm text-mute-2 hover:text-ink">
+            {linkLabel ?? "Open"} <ArrowUpRight className="size-3.5" />
+          </Link>
+        ) : null}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+const actionTile =
+  "group flex min-h-[6.5rem] flex-col justify-between rounded-3xl p-4 ring-1 transition hover:-translate-y-0.5 sm:min-h-[7.5rem] sm:p-5";
 
 export default async function Dashboard() {
   const user = await requireUser();
-  const [{ content }, enquiries] = await Promise.all([readContent(), listEnquiries().catch(() => [])]);
-  const newEnquiries = enquiries.filter((e) => !e.read).length;
-  const live = visibleProjects(content);
-  const realWork = content.projects.filter((p) => !p.isSample && p.published);
-  const drafts = content.projects.filter((p) => !p.published);
+  const isOwner = user.role === "owner";
+  const db = dbConfigured();
+  const today = todayKE();
+  const [{ content }, agenda, leads, projects, money] = await Promise.all([
+    readContent(),
+    db ? agendaFor(user.id, user.role).catch(() => null) : Promise.resolve(null as Agenda | null),
+    db ? listLeads().catch(() => [] as Lead[]) : Promise.resolve([] as Lead[]),
+    db ? listProjects().catch(() => [] as Project[]) : Promise.resolve([] as Project[]),
+    db && isOwner ? monthSnapshot().catch(() => null) : Promise.resolve(null),
+  ]);
+
   const firstName = (user.name || "there").split(" ")[0];
   const hour = Number(new Date().toLocaleString("en-KE", { hour: "numeric", hour12: false, timeZone: "Africa/Nairobi" }));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const dateLine = new Date(`${today}T12:00:00Z`).toLocaleDateString("en-KE", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
+  const late = agenda?.overdueTasks ?? [];
+  const dueToday = agenda?.todayTasks ?? [];
+  const follow = agenda?.followUps ?? [];
+  const summary = [
+    late.length + dueToday.length ? `${late.length + dueToday.length} task${late.length + dueToday.length === 1 ? "" : "s"} due` : null,
+    follow.length ? `${follow.length} follow-up${follow.length === 1 ? "" : "s"}` : null,
+    agenda?.newLeads ? `${agenda.newLeads} new lead${agenda.newLeads === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+
+  const openLeads = leads.filter((l) => ["new", "contacted", "proposal"].includes(l.stage));
+  const activeProjects = projects.filter((p) => p.status === "active" || p.status === "planning").slice(0, 4);
+  const heroImage = content.hero.image.src;
+
+  // Website checklist
+  const realWork = content.projects.filter((p) => !p.isSample && p.published);
   const checklist = [
-    { done: content.hero.image.src.includes("blob.vercel-storage.com"), label: "Replace the placeholder hero image with your own", href: "/admin/homepage" },
-    { done: Boolean(content.hero.video), label: "Add a showreel video to the hero (optional)", href: "/admin/homepage" },
-    { done: realWork.length > 0, label: "Publish your first real client project", href: "/admin/work/new" },
-    { done: !content.settings.showSampleProjects, label: "Hide the sample concept projects once you have real work", href: "/admin/settings" },
-    { done: activeSocialLinks(content).length > 0, label: "Add your social media links", href: "/admin/settings" },
-    { done: content.testimonials.length > 0, label: "Add a client testimonial", href: "/admin/testimonials" },
+    { done: content.hero.image.src.includes("blob.vercel-storage.com"), label: "Your own hero image", href: "/admin/homepage" },
+    { done: realWork.length > 0, label: "First real client project", href: "/admin/work/new" },
+    { done: !content.settings.showSampleProjects, label: "Sample projects hidden", href: "/admin/settings" },
+    { done: activeSocialLinks(content).length > 0, label: "Social links added", href: "/admin/settings" },
+    { done: content.testimonials.length > 0, label: "A client testimonial", href: "/admin/testimonials" },
   ];
   const doneCount = checklist.filter((c) => c.done).length;
 
+  const websiteTiles = [
+    { href: "/admin/homepage", label: "Homepage", icon: Home },
+    { href: "/admin/work", label: "Portfolio", icon: Briefcase },
+    { href: "/admin/services", label: "Services", icon: Sparkles },
+    { href: "/admin/about", label: "About", icon: Info },
+    { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
+    { href: "/admin/settings", label: "Contact", icon: Phone },
+    { href: "/admin/media", label: "Media", icon: Images },
+  ];
+
   return (
-    <div className="py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-mute-2">{greeting},</p>
-          <h1 className="font-display text-[clamp(1.9rem,3.5vw,2.6rem)] font-semibold leading-tight tracking-[-0.03em]">{firstName}</h1>
+    <div className="py-6 sm:py-8">
+      {/* Greeting banner */}
+      <section className="relative overflow-hidden rounded-[2rem] bg-[#141417] ring-1 ring-ink/10">
+        {heroImage ? (
+          <Image src={heroImage} alt="" fill sizes="(min-width: 1024px) 70vw, 100vw" className="object-cover opacity-35" priority />
+        ) : null}
+        <div className="absolute inset-0 bg-[linear-gradient(100deg,#0d0d0f_15%,rgb(13_13_15/0.75)_55%,rgb(253_80_25/0.35))]" aria-hidden />
+        <div className="relative flex flex-wrap items-end justify-between gap-6 p-6 sm:p-8 lg:p-10">
+          <div className="min-w-0">
+            <p className="text-sm text-[#fff]/60">{dateLine}</p>
+            <h1 className="mt-1 font-display text-[clamp(1.9rem,4.5vw,3rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-[#fff]">
+              {greeting}, {firstName}
+            </h1>
+            <p className="mt-2 max-w-xl text-[#fff]/75">
+              {db ? (summary.length ? `Today: ${summary.join(" · ")}.` : "Nothing urgent today. A good day to chase new work.") : "Connect the database to see tasks, leads and money here."}
+            </p>
+          </div>
+          <a href="/" target="_blank" rel="noopener" className="inline-flex h-11 items-center gap-2 rounded-full bg-[#fff] px-5 text-sm font-semibold text-[#111] hover:bg-[#fff]/90">
+            View website <ArrowUpRight className="size-4" />
+          </a>
         </div>
-        <Link href="/" target="_blank" className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-medium ring-1 ring-ink/15 hover:ring-ink/30">
-          brandhouse.co.ke <ArrowUpRight className="size-4" />
-        </Link>
-      </div>
+      </section>
 
-      <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Projects live", value: live.length, note: `${realWork.length} client · ${live.length - realWork.length} sample${drafts.length ? ` · ${drafts.length} draft${drafts.length === 1 ? "" : "s"}` : ""}` },
-          { label: "New enquiries", value: newEnquiries, note: enquiries.length ? `${enquiries.length} in total` : "None yet", href: "/admin/enquiries" },
-          { label: "Services", value: content.services.length, note: "Each with its own page" },
-          {
-            label: "Last published",
-            value: content.updatedAt ? timeAgoServer(content.updatedAt) : "Never",
-            note: content.updatedBy ? `by ${content.updatedBy}` : "Original launch content",
-          },
-        ].map((s) => (
-          <div key={s.label} className="relative rounded-2xl bg-white p-5 ring-1 ring-ink/10">
-            <dt className="text-sm text-mute-2">
-              {"href" in s && s.href ? (
-                <Link href={s.href} className="after:absolute after:inset-0 hover:text-ink">
-                  {s.label}
-                </Link>
-              ) : (
-                s.label
-              )}
-            </dt>
-            <dd className="mt-2 font-display text-3xl font-semibold tracking-[-0.03em]">{s.value}</dd>
-            <dd className="mt-1 truncate text-xs text-ink/45">{s.note}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <section>
-          <h2 className="mb-3 font-display text-lg font-semibold">Edit the website</h2>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {shortcuts.map(({ href, label, body, icon: Icon }) => (
-              <li key={href}>
-                <Link href={href} className="group flex h-full items-start gap-3 rounded-2xl bg-white p-4 ring-1 ring-ink/10 transition hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-12px_rgba(17,17,17,0.25)] hover:ring-ink/20">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-paper text-ink/70 transition-colors group-hover:bg-accent group-hover:text-ink">
-                    <Icon className="size-5" aria-hidden />
-                  </span>
-                  <span>
-                    <span className="block font-medium">{label}</span>
-                    <span className="block text-sm text-mute-2">{body}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="rounded-2xl bg-white bg-[radial-gradient(120%_80%_at_100%_0%,rgb(253_80_25/0.18),transparent_60%)] p-6 ring-1 ring-accent/25">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-semibold">Make it yours</h2>
-            <span className="text-sm text-ink/55">
-              {doneCount}/{checklist.length}
+      {/* Quick actions */}
+      <ul className="mt-4 grid grid-cols-2 gap-3 sm:mt-5 sm:gap-4 lg:grid-cols-4">
+        <li>
+          <Link href="/admin/leads?new=1" className={cn(actionTile, "bg-accent text-[#111] ring-accent")}>
+            <Magnet className="size-6" aria-hidden />
+            <span>
+              <span className="block font-display text-lg font-semibold leading-tight">Add a lead</span>
+              <span className="text-sm text-[#111]/70">Call, WhatsApp, referral</span>
             </span>
-          </div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink/10">
-            <div className="h-full rounded-full bg-accent" style={{ width: `${(doneCount / checklist.length) * 100}%` }} />
-          </div>
-          <ul className="mt-5 space-y-1">
-            {checklist.map((c) => {
-              const inner = (
-                <>
-                  {c.done ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden /> : <Circle className="mt-0.5 size-4 shrink-0 text-ink/30" aria-hidden />}
-                  <span className={c.done ? "text-ink/45 line-through decoration-ink/25" : "text-ink/85"}>{c.label}</span>
-                </>
-              );
-              return (
-                <li key={c.label}>
-                  {c.href && !c.done ? (
-                    <Link href={c.href} className="flex gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-ink/5">
-                      {inner}
-                    </Link>
-                  ) : (
-                    <div className="flex gap-3 px-2 py-1.5 text-sm">{inner}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          </Link>
+        </li>
+        <li>
+          <Link href="/admin/tasks?new=1" className={cn(actionTile, "bg-white ring-ink/10 hover:ring-ink/25")}>
+            <ListChecks className="size-6 text-accent" aria-hidden />
+            <span>
+              <span className="block font-display text-lg font-semibold leading-tight">New task</span>
+              <span className="text-sm text-mute-2">Assign it to the team</span>
+            </span>
+          </Link>
+        </li>
+        <li>
+          {isOwner ? (
+            <Link href="/admin/finance/new?kind=invoice" className={cn(actionTile, "bg-white ring-ink/10 hover:ring-ink/25")}>
+              <FilePlus2 className="size-6 text-accent" aria-hidden />
+              <span>
+                <span className="block font-display text-lg font-semibold leading-tight">Invoice</span>
+                <span className="text-sm text-mute-2">Or a quote, in KES</span>
+              </span>
+            </Link>
+          ) : (
+            <Link href="/admin/clients?new=1" className={cn(actionTile, "bg-white ring-ink/10 hover:ring-ink/25")}>
+              <UserPlus className="size-6 text-accent" aria-hidden />
+              <span>
+                <span className="block font-display text-lg font-semibold leading-tight">New client</span>
+                <span className="text-sm text-mute-2">Contacts and projects</span>
+              </span>
+            </Link>
+          )}
+        </li>
+        <li>
+          <Link href="/admin/work/new" className={cn(actionTile, "bg-white ring-ink/10 hover:ring-ink/25")}>
+            <Briefcase className="size-6 text-accent" aria-hidden />
+            <span>
+              <span className="block font-display text-lg font-semibold leading-tight">Post work</span>
+              <span className="text-sm text-mute-2">Add to the portfolio</span>
+            </span>
+          </Link>
+        </li>
+      </ul>
 
-        </section>
+      <div className="mt-4 grid gap-4 sm:mt-5 sm:gap-5 md:grid-cols-6 xl:grid-cols-12">
+        {/* Today */}
+        <Card title="Today" href="/admin/tasks" linkLabel="All tasks" className="md:col-span-6 xl:col-span-7">
+          {!db ? (
+            <p className="text-sm text-mute-2">Tasks appear here once the database is connected.</p>
+          ) : late.length + dueToday.length + follow.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center rounded-2xl bg-paper/60 py-10 text-center">
+              <CheckCircle2 className="size-8 text-emerald-700" aria-hidden />
+              <p className="mt-2 font-medium">You&apos;re all caught up</p>
+              <p className="text-sm text-mute-2">
+                {agenda?.upcomingTasks.length ? `${agenda.upcomingTasks.length} coming up this week.` : "Nothing due."}
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {[...late, ...dueToday].slice(0, 7).map((t) => {
+                const due = dueLabel(t.dueOn, today);
+                return (
+                  <li key={t.id} className="relative flex items-center gap-3 rounded-2xl bg-paper/60 px-3.5 py-3 ring-1 ring-ink/6">
+                    <TaskCheck task={t} />
+                    <Link href={`/admin/tasks/${t.id}`} className="min-w-0 flex-1 after:absolute after:inset-0">
+                      <span className="block truncate font-medium">{t.title}</span>
+                      {t.projectName ? <span className="block truncate text-xs text-mute-2">{t.projectName}</span> : null}
+                    </Link>
+                    {due ? <Pill tone={due.tone}>{due.label}</Pill> : null}
+                  </li>
+                );
+              })}
+              {follow.slice(0, 4).map((l) => (
+                <li key={l.id}>
+                  <Link href={`/admin/leads/${l.id}`} className="flex items-center gap-3 rounded-2xl bg-accent/8 px-3.5 py-3 ring-1 ring-accent/20 hover:ring-accent/40">
+                    <Phone className="size-5 shrink-0 text-accent" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">Follow up with {l.name}</span>
+                      <span className="block truncate text-xs text-mute-2">{l.organisation || labelOf(leadStages, l.stage)}</span>
+                    </span>
+                    {(() => {
+                      const d = dueLabel(l.followUpOn, today);
+                      return d ? <Pill tone={d.tone}>{d.label}</Pill> : null;
+                    })()}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        {/* Money (owners) or pipeline */}
+        {money ? (
+          <Card title="This month" href="/admin/finance" linkLabel="Finance" className="md:col-span-6 xl:col-span-5">
+            <dl className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Received", value: money.month.received, tone: "text-emerald-700" },
+                { label: "Spent", value: money.month.expenses, tone: "" },
+                { label: "Profit", value: money.month.profit, tone: money.month.profit < 0 ? "text-red-700" : "" },
+                { label: "Overdue", value: (agenda?.overdueInvoices ?? []).reduce((s, i) => s + i.balance, 0), tone: agenda?.overdueInvoices.length ? "text-red-700" : "" },
+              ].map((s) => (
+                <div key={s.label} className="rounded-2xl bg-paper/60 p-4 ring-1 ring-ink/6">
+                  <dt className="text-xs text-mute-2">{s.label}</dt>
+                  <dd className={cn("mt-1 truncate font-display text-xl font-semibold tracking-[-0.02em]", s.tone)}>{kes(s.value)}</dd>
+                </div>
+              ))}
+            </dl>
+            {agenda?.overdueInvoices.length ? (
+              <ul className="mt-3 space-y-1.5">
+                {agenda.overdueInvoices.slice(0, 3).map((i) => (
+                  <li key={i.id}>
+                    <Link href={`/admin/finance/doc/${i.id}`} className="flex items-center justify-between gap-3 rounded-xl px-2 py-1.5 text-sm hover:bg-ink/5">
+                      <span className="min-w-0 truncate">
+                        {i.number} · {i.clientName}
+                      </span>
+                      <span className="shrink-0 text-red-700">{i.daysOverdue}d late</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </Card>
+        ) : null}
+
+        {/* Pipeline */}
+        <Card title="Leads pipeline" href="/admin/leads" linkLabel="Leads" className={cn("md:col-span-6", money ? "xl:col-span-5" : "xl:col-span-5")}>
+          {db ? (
+            <>
+              <div className="space-y-3">
+                {leadStages.map((s) => {
+                  const n = leads.filter((l) => l.stage === s.id).length;
+                  const max = Math.max(1, ...leadStages.map((x) => leads.filter((l) => l.stage === x.id).length));
+                  return (
+                    <Link key={s.id} href={`/admin/leads?stage=${s.id}`} className="grid grid-cols-[6.5rem_minmax(0,1fr)_2rem] items-center gap-3 text-sm hover:text-ink">
+                      <span className="truncate text-mute-2">{s.label}</span>
+                      <span className="h-2.5 overflow-hidden rounded-full bg-ink/8">
+                        <span className={cn("block h-full rounded-full", s.id === "won" ? "bg-emerald-600" : s.id === "lost" ? "bg-ink/25" : "bg-accent")} style={{ width: `${(n / max) * 100}%` }} />
+                      </span>
+                      <span className="text-right font-medium tabular-nums">{n}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+              <p className="mt-4 text-sm text-mute-2">
+                {openLeads.length} open
+                {openLeads.some((l) => l.value) ? ` · ${kes(openLeads.reduce((s, l) => s + (l.value ?? 0), 0))} potential` : ""}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-mute-2">Connect the database to track leads.</p>
+          )}
+        </Card>
+
+        {/* Projects */}
+        <Card title="Projects in progress" href="/admin/projects" linkLabel="All projects" className={cn("md:col-span-6", money ? "xl:col-span-7" : "xl:col-span-7")}>
+          {activeProjects.length ? (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {activeProjects.map((p) => {
+                const total = p.openTasks + p.doneTasks;
+                const due = dueLabel(p.dueOn, today);
+                return (
+                  <li key={p.id}>
+                    <Link href={`/admin/projects/${p.id}`} className="block h-full rounded-2xl bg-paper/60 p-4 ring-1 ring-ink/6 hover:ring-ink/20">
+                      <p className="truncate font-medium">{p.name}</p>
+                      <p className="truncate text-xs text-mute-2">{p.clientName ?? "Internal"}</p>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-ink/10">
+                        <div className="h-full rounded-full bg-accent" style={{ width: `${total ? (p.doneTasks / total) * 100 : 0}%` }} />
+                      </div>
+                      <p className="mt-1.5 flex justify-between text-xs text-ink/55">
+                        <span>
+                          {p.doneTasks}/{total} tasks
+                        </span>
+                        {due ? <span className={cn(due.tone === "red" && "text-red-700")}>{due.label}</span> : null}
+                      </p>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="rounded-2xl bg-paper/60 p-6 text-center text-sm text-mute-2">No active projects. Win a lead to start one.</p>
+          )}
+        </Card>
+
+        {/* Newest leads */}
+        <Card title="Latest leads" href="/admin/leads" linkLabel="All" className="md:col-span-3 xl:col-span-5">
+          {leads.length ? (
+            <ul className="-mx-2 space-y-0.5">
+              {leads.slice(0, 5).map((l) => (
+                <li key={l.id}>
+                  <Link href={`/admin/leads/${l.id}`} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-ink/5">
+                    <span className={cn("size-2 shrink-0 rounded-full", l.read ? "bg-ink/15" : "bg-accent")} aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className={cn("block truncate text-sm", !l.read && "font-semibold")}>{l.name}</span>
+                      <span className="block truncate text-xs text-mute-2">{l.organisation || l.services[0] || l.source}</span>
+                    </span>
+                    <span className="hidden shrink-0 sm:inline">
+                      <Pill tone={stageTone[l.stage]}>{labelOf(leadStages, l.stage)}</Pill>
+                    </span>
+                    <span className="shrink-0 text-xs text-ink/45">{timeAgoServer(l.receivedAt)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-mute-2">Enquiries from the website appear here.</p>
+          )}
+        </Card>
+
+        {/* Website */}
+        <Card title="Website" href="/" linkLabel="brandhouse.co.ke" className="md:col-span-3 xl:col-span-7">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_14rem]">
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {websiteTiles.map(({ href, label, icon: Icon }) => (
+                <li key={href}>
+                  <Link href={href} className="group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-paper/60 p-2 text-center ring-1 ring-ink/6 transition hover:bg-accent hover:text-[#111]">
+                    <Icon className="size-5 text-accent group-hover:text-[#111]" aria-hidden />
+                    <span className="text-xs font-medium leading-tight">{label}</span>
+                  </Link>
+                </li>
+              ))}
+              <li className="flex aspect-square flex-col items-center justify-center rounded-2xl bg-paper/60 p-2 text-center ring-1 ring-ink/6">
+                <span className="font-display text-xl font-semibold">{visibleProjects(content).length}</span>
+                <span className="text-[0.68rem] leading-tight text-mute-2">projects live</span>
+              </li>
+            </ul>
+            <div className="rounded-2xl bg-paper/60 p-4 ring-1 ring-ink/6">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Make it yours</p>
+                <span className="text-xs text-ink/55">
+                  {doneCount}/{checklist.length}
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink/10">
+                <div className="h-full rounded-full bg-accent" style={{ width: `${(doneCount / checklist.length) * 100}%` }} />
+              </div>
+              <ul className="mt-3 space-y-1">
+                {checklist.map((c) => (
+                  <li key={c.label}>
+                    <Link href={c.href} className="flex items-start gap-2 rounded-lg px-1 py-1 text-xs hover:bg-ink/5">
+                      {c.done ? <CheckCircle2 className="size-3.5 shrink-0 text-accent" aria-hidden /> : <Circle className="size-3.5 shrink-0 text-ink/30" aria-hidden />}
+                      <span className={c.done ? "text-ink/45 line-through" : "text-ink/85"}>{c.label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-[0.7rem] text-ink/45">
+                Last published {content.updatedAt ? timeAgoServer(content.updatedAt).toLowerCase() : "at launch"}
+                {content.updatedBy ? ` by ${content.updatedBy}` : ""}
+              </p>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );

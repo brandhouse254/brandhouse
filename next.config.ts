@@ -15,8 +15,14 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+/** Identifies this build, so an open admin app can tell when a newer version is live. */
+const appVersion = process.env.VERCEL_DEPLOYMENT_ID || process.env.VERCEL_GIT_COMMIT_SHA || `local-${Date.now()}`;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: { NEXT_PUBLIC_APP_VERSION: appVersion },
+  // In-process Postgres used only for local development and tests.
+  serverExternalPackages: ["@electric-sql/pglite"],
   images: {
     formats: ["image/avif", "image/webp"],
     qualities: [75, 85],
@@ -32,7 +38,13 @@ const nextConfig: NextConfig = {
     if (!isProductionDeployment) {
       headers.push({ key: "X-Robots-Tag", value: "noindex, nofollow" });
     }
-    return [{ source: "/:path*", headers }];
+    return [
+      { source: "/:path*", headers },
+      // The admin app's service worker is always re-checked, so updates arrive without reinstalling.
+      { source: "/admin/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, max-age=0" }] },
+      // Shared invoices and quotes are private links: never indexed.
+      { source: "/i/:token", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+    ];
   },
 };
 
