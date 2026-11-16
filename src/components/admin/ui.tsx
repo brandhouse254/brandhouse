@@ -20,7 +20,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-ink/10 bg-white shadow-[0_1px_2px_rgba(17,17,17,0.04)]", className)}>
+    <section className={cn("min-w-0 rounded-2xl border border-ink/10 bg-white shadow-[0_1px_2px_rgba(17,17,17,0.04)]", className)}>
       {title || actions ? (
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-ink/8 px-5 py-4 sm:px-6">
           <div>
@@ -441,7 +441,7 @@ export function Repeater<T>({
       {hint ? <p className="mb-3 text-xs text-mute-2">{hint}</p> : null}
       <ol className="space-y-3">
         {items.map((item, i) => (
-          <li key={i} className="rounded-xl border border-ink/10 bg-paper/40">
+          <li key={i} className="min-w-0 rounded-xl border border-ink/10 bg-paper/40">
             <div className="flex items-center gap-2 border-b border-ink/8 px-3 py-2">
               <span className="flex size-6 items-center justify-center rounded-full bg-white text-xs font-semibold tabular-nums text-ink/60 ring-1 ring-ink/10">
                 {i + 1}

@@ -263,7 +263,7 @@ export function ImageField<T extends ImageValue>({
 
   return (
     <Field label={label} hint={hint}>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_1fr]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <DropZone accept={IMAGE_TYPES} onFile={setFile} progress={progress} className="rounded-xl">
           <div className={cn("relative overflow-hidden rounded-xl bg-[repeating-conic-gradient(#f1eee8_0_25%,#fff_0_50%)] bg-[length:16px_16px] ring-1 ring-ink/10", aspect)}>
             {value.src ? (
@@ -282,7 +282,7 @@ export function ImageField<T extends ImageValue>({
             ) : null}
           </div>
         </DropZone>
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setLibraryOpen(true)}>
               <Images className="size-4" /> Choose from library
@@ -354,7 +354,7 @@ export function VideoField({
 
   return (
     <Field label={label} hint={hint}>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_1fr]">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
         <DropZone accept={VIDEO_TYPES} onFile={setFile} progress={progress}>
           <div className="relative aspect-video overflow-hidden rounded-xl bg-ink ring-1 ring-ink/10">
             {value && !isLink ? (
@@ -372,7 +372,7 @@ export function VideoField({
             ) : null}
           </div>
         </DropZone>
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setLibraryOpen(true)}>
               <Images className="size-4" /> Choose from library
