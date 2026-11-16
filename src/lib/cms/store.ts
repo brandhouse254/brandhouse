@@ -1,11 +1,9 @@
 import { BlobPreconditionFailedError, del, get, list, put } from "@vercel/blob";
-import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { defaultContent } from "./defaults";
 import { blobEnabled, paths } from "./paths";
 import type { SiteContent } from "./types";
 
-export const CONTENT_TAG = "cms-content";
 const HISTORY_KEEP = 40;
 
 /** Stored content laid over the defaults, so fields added later in code always exist. */
@@ -47,12 +45,12 @@ export async function readContent(): Promise<{ content: SiteContent; etag: strin
   return { content: withDefaults(found.data as Partial<SiteContent>), etag: found.etag };
 }
 
-const cachedContent = unstable_cache(async () => (await readContent()).content, ["cms-content-v1"], {
-  tags: [CONTENT_TAG],
-});
-
-/** Content for public pages. Cached until the admin saves (see revalidate in actions). */
-export const getContent = cache(async (): Promise<SiteContent> => cachedContent());
+/**
+ * Content for public pages. Pages are prerendered and served from Vercel's
+ * cache; every publish from the admin re-renders them (revalidatePath in
+ * src/lib/admin/actions.ts), so this read only runs when a page is rebuilt.
+ */
+export const getContent = cache(async (): Promise<SiteContent> => (await readContent()).content);
 
 export class ContentConflictError extends Error {
   constructor() {

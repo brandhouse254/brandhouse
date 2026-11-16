@@ -115,6 +115,8 @@ export function ServiceEditor({ services, slug }: { services: Service[]; slug: s
   const [slugTouched, setSlugTouched] = useState(!isNew);
   const deleting = useRef(false);
   const ed = useSectionEditor("services", initial, {
+    stored: services,
+    onDiscard: isNew ? () => router.push("/admin/services") : undefined,
     onSaved: (stored) => {
       if (deleting.current) return;
       const saved = stored[index];

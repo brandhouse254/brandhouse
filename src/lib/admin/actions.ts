@@ -1,7 +1,7 @@
 "use server";
 
 import { del, list } from "@vercel/blob";
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hashPassword, safeEqualText, temporaryPassword, verifyPassword } from "@/lib/auth/crypto";
@@ -10,7 +10,6 @@ import { newUser, normaliseEmail, readUsers, toPublic, updateUsers, type PublicU
 import { blobEnabled, paths } from "@/lib/cms/paths";
 import { describeIssue, sectionSchemas, type SectionKey } from "@/lib/cms/schema";
 import {
-  CONTENT_TAG,
   ContentConflictError,
   listHistory,
   readContent,
@@ -29,8 +28,8 @@ function failure(e: unknown): { ok: false; error: string } {
   return { ok: false, error: e instanceof Error && e.message ? e.message : "Something went wrong. Please try again." };
 }
 
+/** Re-render every public page with the new content on its next visit. */
 function refreshSite() {
-  updateTag(CONTENT_TAG);
   revalidatePath("/", "layout");
 }
 

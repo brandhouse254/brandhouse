@@ -175,6 +175,8 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
   const [slugTouched, setSlugTouched] = useState(!isNew);
   const deleting = useRef(false);
   const ed = useSectionEditor("projects", initial, {
+    stored: projects,
+    onDiscard: isNew ? () => router.push("/admin/work") : undefined,
     onSaved: (stored) => {
       if (deleting.current) return;
       const saved = stored[index];

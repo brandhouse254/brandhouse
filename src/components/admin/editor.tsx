@@ -16,9 +16,19 @@ type SaveState = { kind: "idle" } | { kind: "saved"; at: string } | { kind: "err
  * Holds a working copy of one content section, tracks unsaved changes, and
  * saves through the server (which validates, stores and refreshes the site).
  */
-export function useSectionEditor<T>(section: SectionKey, initial: T, options?: { onSaved?: (stored: T) => void }) {
+export function useSectionEditor<T>(
+  section: SectionKey,
+  initial: T,
+  options?: {
+    onSaved?: (stored: T) => void;
+    /** What's currently stored, when `initial` already contains an unsaved addition (a new project). */
+    stored?: T;
+    /** Replaces Discard (e.g. leave the page when discarding a brand-new item). */
+    onDiscard?: () => void;
+  },
+) {
   const [value, setValue] = useState<T>(initial);
-  const [baseline, setBaseline] = useState<string>(() => stableStringify(initial));
+  const [baseline, setBaseline] = useState<string>(() => stableStringify(options?.stored ?? initial));
   const [state, setState] = useState<SaveState>({ kind: "idle" });
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -52,10 +62,12 @@ export function useSectionEditor<T>(section: SectionKey, initial: T, options?: {
     [section, value, baseline, router],
   );
 
+  const onDiscard = options?.onDiscard;
   const discard = useCallback(() => {
+    if (onDiscard) return onDiscard();
     setValue(JSON.parse(baseline) as T);
     setState({ kind: "idle" });
-  }, [baseline]);
+  }, [baseline, onDiscard]);
 
   // Warn before leaving with unsaved changes; Ctrl/⌘+S saves.
   const saveRef = useRef(save);
