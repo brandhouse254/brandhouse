@@ -31,6 +31,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "*.public.blob.vercel-storage.com" },
       { protocol: "https", hostname: "i.ytimg.com" },
+      // Unsplash photography (the /next homepage concept).
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   async headers() {

@@ -12,6 +12,7 @@ import { Logo } from "./Logo";
 function hasDarkHero(pathname: string) {
   return (
     pathname === "/" ||
+    pathname === "/next" ||
     (pathname.startsWith("/services/") && pathname.split("/").length === 3) ||
     (pathname.startsWith("/work/") && pathname.split("/").length === 3)
   );
