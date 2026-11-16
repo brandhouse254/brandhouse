@@ -185,14 +185,14 @@ export async function saveSection(
     if (!schema) return { ok: false, error: "Unknown section." };
     const parsed = schema.safeParse(value);
     if (!parsed.success) return { ok: false, error: describeIssue(parsed.error) };
-    const { content, etag } = await readContent();
+    const { content } = await readContent();
     const currentText = stableStringify(content[section]);
     if (currentText !== baseline) {
       console.warn("[admin] save conflict", section, firstDifference(JSON.parse(baseline), JSON.parse(currentText)));
       throw new ContentConflictError();
     }
     const next = { ...content, [section]: parsed.data } as SiteContent;
-    await writeContent(next, etag, me.name || me.email);
+    await writeContent(next, me.name || me.email);
     refreshSite();
     return { ok: true, value: parsed.data, savedAt: new Date().toISOString() };
   } catch (e) {
@@ -213,8 +213,7 @@ export async function restoreVersion(url: string): Promise<Result> {
   try {
     const me = await assertUser("owner");
     const version = await readHistoryVersion(url);
-    const { etag } = await readContent();
-    await writeContent(version, etag, `${me.name || me.email} (restored a previous version)`);
+    await writeContent(version, `${me.name || me.email} (restored a previous version)`);
     refreshSite();
     return { ok: true };
   } catch (e) {

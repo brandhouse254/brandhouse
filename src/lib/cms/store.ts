@@ -1,4 +1,4 @@
-import { BlobPreconditionFailedError, del, get, list, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 import { cache } from "react";
 import { defaultContent } from "./defaults";
 import { blobEnabled, paths } from "./paths";
@@ -59,34 +59,20 @@ export class ContentConflictError extends Error {
 }
 
 /**
- * Write a whole new content document. `expectedEtag` is the version the editor
- * started from; if storage has moved on since, ContentConflictError is thrown.
+ * Write a whole new content document. Callers check for conflicting edits
+ * first (see saveSection); the write itself simply replaces the file.
  */
-export async function writeContent(
-  next: SiteContent,
-  expectedEtag: string | null,
-  editor: string,
-): Promise<{ etag: string }> {
+export async function writeContent(next: SiteContent, editor: string): Promise<void> {
   if (!blobEnabled()) throw new Error("Storage isn't connected (BLOB_READ_WRITE_TOKEN is missing).");
-  const current = await readContent();
-  if (current.etag !== expectedEtag) throw new ContentConflictError();
-
   const doc: SiteContent = { ...next, version: 1, updatedAt: new Date().toISOString(), updatedBy: editor };
   const body = JSON.stringify(doc);
-  let result;
-  try {
-    result = await put(paths.content(), body, {
-      access: "public",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType: "application/json",
-      cacheControlMaxAge: 60,
-      ...(current.etag ? { ifMatch: current.etag } : {}),
-    });
-  } catch (e) {
-    if (e instanceof BlobPreconditionFailedError) throw new ContentConflictError();
-    throw e;
-  }
+  await put(paths.content(), body, {
+    access: "public",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+    cacheControlMaxAge: 60,
+  });
 
   // Version history: one snapshot per save, newest 40 kept.
   try {
@@ -105,8 +91,6 @@ export async function writeContent(
   } catch (e) {
     console.error("[cms] history snapshot failed", e);
   }
-
-  return { etag: result.etag };
 }
 
 export type HistoryEntry = { url: string; savedAt: string; editor: string; size: number };
