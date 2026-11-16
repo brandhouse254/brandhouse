@@ -38,6 +38,19 @@ const passwordRule = z
   .min(10, { error: "Use at least 10 characters." })
   .max(200, { error: "That password is too long." });
 
+/** Where two JSON values first differ, for the server log when a save is refused. */
+function firstDifference(a: unknown, b: unknown, path = ""): string | null {
+  if (JSON.stringify(a) === JSON.stringify(b)) return null;
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    const keys = new Set([...Object.keys(a as object), ...Object.keys(b as object)]);
+    for (const k of keys) {
+      const d = firstDifference((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], `${path}.${k}`);
+      if (d) return d;
+    }
+  }
+  return `${path || "(root)"}: ${JSON.stringify(a)?.slice(0, 120)} → ${JSON.stringify(b)?.slice(0, 120)}`;
+}
+
 /* ───────────── Sign in / out ───────────── */
 
 const attempts = new Map<string, { count: number; until: number }>();
@@ -173,7 +186,11 @@ export async function saveSection(
     const parsed = schema.safeParse(value);
     if (!parsed.success) return { ok: false, error: describeIssue(parsed.error) };
     const { content, etag } = await readContent();
-    if (stableStringify(content[section]) !== baseline) throw new ContentConflictError();
+    const currentText = stableStringify(content[section]);
+    if (currentText !== baseline) {
+      console.warn("[admin] save conflict", section, firstDifference(JSON.parse(baseline), JSON.parse(currentText)));
+      throw new ContentConflictError();
+    }
     const next = { ...content, [section]: parsed.data } as SiteContent;
     await writeContent(next, etag, me.name || me.email);
     refreshSite();
