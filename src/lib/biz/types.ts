@@ -233,6 +233,9 @@ export function kes(n: number) {
   return `KES ${n.toLocaleString("en-KE", { minimumFractionDigits: hasCents ? 2 : 0, maximumFractionDigits: 2 })}`;
 }
 
+/** Whole shillings, for dashboards and summaries. */
+export const kesWhole = (n: number) => kes(Math.round(n));
+
 /** Invoice maths, shared by the editor (live preview) and the server (stored totals). */
 export function computeTotals(
   items: InvoiceItem[],

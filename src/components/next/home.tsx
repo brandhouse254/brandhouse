@@ -109,7 +109,7 @@ export function NextIntro({ intro }: { intro: IntroContent }) {
           {intro.statement.split(" ").slice(6).join(" ")}
         </p>
         {intro.facts.length ? (
-          <dl className="mt-16 grid gap-px overflow-hidden rounded-3xl bg-ink/10 sm:grid-cols-2 lg:grid-cols-4 md:mt-24">
+          <dl className={cn("mt-16 grid gap-px overflow-hidden rounded-3xl bg-ink/10 md:mt-24", intro.facts.length % 3 === 0 ? "md:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4")}>
             {intro.facts.map((f, i) => (
               <div key={f.title} className="reveal bg-paper p-6 md:p-8">
                 <span className="font-display text-sm tabular-nums text-accent">0{i + 1}</span>
@@ -153,8 +153,8 @@ export function NextServices({ services }: { services: Service[] }) {
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgb(17_17_17/0.92))]" aria-hidden />
                   </div>
                   <div className="absolute inset-x-0 bottom-0 p-6 md:p-8">
-                    <span className="font-display text-sm tabular-nums text-accent">{s.number}</span>
-                    <h3 className="mt-2 font-display text-[clamp(1.8rem,3.2vw,2.8rem)] font-semibold leading-none tracking-[-0.03em]">{s.title}</h3>
+                    <span className="mb-3 block font-display text-sm tabular-nums text-accent">{s.number}</span>
+                    <h3 className="font-display text-[clamp(1.8rem,3.2vw,2.8rem)] font-semibold leading-none tracking-[-0.03em]">{s.title}</h3>
                     <p className="mt-3 max-w-md text-white/75">{s.summary}</p>
                     <ul className="mt-5 flex flex-wrap gap-2">
                       {s.capabilities.slice(0, 4).map((c) => (

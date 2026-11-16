@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { receivables, yearReport } from "@/lib/biz/reports";
 import { todayKE } from "@/lib/biz/data";
-import { kes } from "@/lib/biz/types";
+import { kes, kesWhole } from "@/lib/biz/types";
 import { fmtDate, PageHeader, Panel, Stat } from "@/components/admin/biz/bits";
 import { cn } from "@/lib/cn";
 
@@ -38,10 +38,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       />
 
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Income (excl. VAT)" value={kes(report.total.receivedNet)} note={`${kes(report.total.received)} received in total`} />
-        <Stat label="Expenses (excl. VAT)" value={kes(report.total.expenses - report.total.vatPaid)} />
-        <Stat label="Profit" value={kes(report.total.profit)} tone={report.total.profit >= 0 ? "green" : "red"} />
-        <Stat label="Owed to you now" value={kes(owed.total)} tone={owed.overdue ? "red" : undefined} note={owed.overdue ? `${kes(owed.overdue)} overdue` : "Nothing overdue"} />
+        <Stat label="Income (excl. VAT)" value={kesWhole(report.total.receivedNet)} note={`${kesWhole(report.total.received)} received in total`} />
+        <Stat label="Expenses (excl. VAT)" value={kesWhole(report.total.expenses - report.total.vatPaid)} />
+        <Stat label="Profit" value={kesWhole(report.total.profit)} tone={report.total.profit >= 0 ? "green" : "red"} />
+        <Stat label="Owed to you now" value={kesWhole(owed.total)} tone={owed.overdue ? "red" : undefined} note={owed.overdue ? `${kesWhole(owed.overdue)} overdue` : "Nothing overdue"} />
       </dl>
 
       <Panel title={`Month by month, ${year}`} className="mt-5">

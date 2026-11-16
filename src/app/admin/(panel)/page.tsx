@@ -25,7 +25,7 @@ import { timeAgoServer } from "@/lib/admin/time";
 import { listLeads, listProjects, todayKE } from "@/lib/biz/data";
 import { agendaFor, type Agenda } from "@/lib/biz/agenda";
 import { monthSnapshot } from "@/lib/biz/reports";
-import { kes, labelOf, leadStages, type Lead, type Project } from "@/lib/biz/types";
+import { kes, kesWhole, labelOf, leadStages, type Lead, type Project } from "@/lib/biz/types";
 import { dueLabel, Pill, stageTone } from "@/components/admin/biz/bits";
 import { TaskCheck } from "@/components/admin/biz/tasks";
 import { cn } from "@/lib/cn";
@@ -198,7 +198,7 @@ export default async function Dashboard() {
                   <li key={t.id} className="relative flex items-center gap-3 rounded-2xl bg-paper/60 px-3.5 py-3 ring-1 ring-ink/6">
                     <TaskCheck task={t} />
                     <Link href={`/admin/tasks/${t.id}`} className="min-w-0 flex-1 after:absolute after:inset-0">
-                      <span className="block truncate font-medium">{t.title}</span>
+                      <span className="line-clamp-2 block font-medium leading-snug">{t.title}</span>
                       {t.projectName ? <span className="block truncate text-xs text-mute-2">{t.projectName}</span> : null}
                     </Link>
                     {due ? <Pill tone={due.tone}>{due.label}</Pill> : null}
@@ -210,7 +210,7 @@ export default async function Dashboard() {
                   <Link href={`/admin/leads/${l.id}`} className="flex items-center gap-3 rounded-2xl bg-accent/8 px-3.5 py-3 ring-1 ring-accent/20 hover:ring-accent/40">
                     <Phone className="size-5 shrink-0 text-accent" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">Follow up with {l.name}</span>
+                      <span className="line-clamp-2 block font-medium leading-snug">Follow up with {l.name}</span>
                       <span className="block truncate text-xs text-mute-2">{l.organisation || labelOf(leadStages, l.stage)}</span>
                     </span>
                     {(() => {
@@ -236,7 +236,7 @@ export default async function Dashboard() {
               ].map((s) => (
                 <div key={s.label} className="rounded-2xl bg-paper/60 p-4 ring-1 ring-ink/6">
                   <dt className="text-xs text-mute-2">{s.label}</dt>
-                  <dd className={cn("mt-1 truncate font-display text-xl font-semibold tracking-[-0.02em]", s.tone)}>{kes(s.value)}</dd>
+                  <dd className={cn("mt-1 truncate font-display text-lg font-semibold tracking-[-0.02em] sm:text-xl", s.tone)}>{kesWhole(s.value)}</dd>
                 </div>
               ))}
             </dl>
@@ -345,7 +345,7 @@ export default async function Dashboard() {
         {/* Website */}
         <Card title="Website" href="/" linkLabel="brandhouse.co.ke" className="md:col-span-3 xl:col-span-7">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_14rem]">
-            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            <ul className="grid grid-cols-3 content-start gap-2 sm:grid-cols-4">
               {websiteTiles.map(({ href, label, icon: Icon }) => (
                 <li key={href}>
                   <Link href={href} className="group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl bg-paper/60 p-2 text-center ring-1 ring-ink/6 transition hover:bg-accent hover:text-[#111]">

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FilePlus2, FileText, Plus, Receipt } from "lucide-react";
 import { getBusinessSettings, listInvoices, todayKE } from "@/lib/biz/data";
 import { monthSnapshot, receivables } from "@/lib/biz/reports";
-import { kes } from "@/lib/biz/types";
+import { kes, kesWhole } from "@/lib/biz/types";
 import { LinkButton, PageHeader, Panel, Stat } from "@/components/admin/biz/bits";
 import { DocList } from "@/components/admin/biz/doc-list";
 
@@ -40,10 +40,10 @@ export default async function FinancePage() {
       ) : null}
 
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Received this month" value={kes(m.received)} tone="green" note={`${kes(m.receivedNet)} excl. VAT`} />
-        <Stat label="Spent this month" value={kes(m.expenses)} href="/admin/finance/expenses" />
-        <Stat label="Profit this month" value={kes(m.profit)} tone={m.profit < 0 ? "red" : undefined} note={`${kes(snap.year.profit)} this year`} href="/admin/finance/reports" />
-        <Stat label="Owed to you" value={kes(owed.total)} tone={owed.overdue ? "red" : undefined} note={owed.overdue ? `${kes(owed.overdue)} overdue` : `${owed.items.length} unpaid`} href="/admin/finance/reports" />
+        <Stat label="Received this month" value={kesWhole(m.received)} tone="green" note={`${kesWhole(m.receivedNet)} excl. VAT`} />
+        <Stat label="Spent this month" value={kesWhole(m.expenses)} href="/admin/finance/expenses" />
+        <Stat label="Profit this month" value={kesWhole(m.profit)} tone={m.profit < 0 ? "red" : undefined} note={`${kesWhole(snap.year.profit)} this year`} href="/admin/finance/reports" />
+        <Stat label="Owed to you" value={kesWhole(owed.total)} tone={owed.overdue ? "red" : undefined} note={owed.overdue ? `${kesWhole(owed.overdue)} overdue` : `${owed.items.length} unpaid`} href="/admin/finance/reports" />
       </dl>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">

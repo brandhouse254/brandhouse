@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronsLeft,
   ChevronsRight,
+  ExternalLink,
   FolderKanban,
   Globe,
   History,
@@ -222,8 +223,8 @@ export function AdminShell({
       )}
     >
       <Globe className="size-[1.1rem] shrink-0" aria-hidden />
-      {compact ? <span className="sr-only">Open the website</span> : <span className="flex-1">View website</span>}
-      {compact ? null : <span className="text-xs font-medium text-[#111]/60">brandhouse.co.ke</span>}
+      {compact ? <span className="sr-only">Open the website</span> : <span className="flex-1 whitespace-nowrap">View website</span>}
+      {compact ? null : <ExternalLink className="size-4 shrink-0 opacity-60" aria-hidden />}
     </a>
   );
 
@@ -405,7 +406,8 @@ export function AdminShell({
           aria-label="Menu"
           className={cn(
             "absolute inset-y-0 left-0 flex w-[min(20rem,86vw)] flex-col bg-[#0b0b0d] text-[#fff] shadow-2xl ring-1 ring-[#fff]/8",
-            drag ? "" : "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+            drag ? "" : "transition-[transform,visibility] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+            drawer || drag ? "visible" : "invisible",
           )}
           style={{ transform: `translateX(${drawerOffset}px)`, paddingTop: "env(safe-area-inset-top)" }}
         >
