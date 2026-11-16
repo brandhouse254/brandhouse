@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { activeSocialLinks, siteConfig } from "@/config/site";
-import { services } from "@/content/services";
+import { siteConfig } from "@/config/site";
+import { getContent } from "@/lib/cms/store";
+import { activeSocialLinks } from "@/lib/cms/public";
 import { Logo } from "./Logo";
 import { CopyrightYear } from "./CopyrightYear";
 
-export function Footer() {
-  const { email, phone, location } = siteConfig.contact;
+export async function Footer() {
+  const content = await getContent();
+  const { services, settings } = content;
+  const socialLinks = activeSocialLinks(content);
+  const { email, phone, location, whatsapp } = settings.contact;
   const hasContact = Boolean(email || phone || location);
 
   return (
@@ -16,8 +20,8 @@ export function Footer() {
             <Link href="/" aria-label="Brand House home" className="inline-block">
               <Logo className="h-14 md:h-16" />
             </Link>
-            <p className="mt-6 font-display text-lg text-white">{siteConfig.descriptor}</p>
-            <p className="mt-3 max-w-sm text-white/60">{siteConfig.statement}</p>
+            <p className="mt-6 font-display text-lg text-white">{settings.descriptor}</p>
+            <p className="mt-3 max-w-sm text-white/60">{settings.statement}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 md:col-span-7">
@@ -64,10 +68,10 @@ export function Footer() {
                     </a>
                   </li>
                 ) : null}
-                {siteConfig.contact.whatsapp ? (
+                {whatsapp ? (
                   <li>
                     <a
-                      href={`https://wa.me/${siteConfig.contact.whatsapp}`}
+                      href={`https://wa.me/${whatsapp}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex min-h-10 items-center hover:text-accent"
@@ -85,9 +89,9 @@ export function Footer() {
                   </li>
                 ) : null}
               </ul>
-              {activeSocialLinks.length ? (
+              {socialLinks.length ? (
                 <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-1">
-                  {activeSocialLinks.map((s) => (
+                  {socialLinks.map((s) => (
                     <li key={s.label}>
                       <a
                         href={s.href}

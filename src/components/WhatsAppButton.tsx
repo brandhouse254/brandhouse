@@ -1,12 +1,12 @@
 import { siWhatsapp } from "simple-icons";
-import { siteConfig } from "@/config/site";
+import { getContent } from "@/lib/cms/store";
 
 /**
  * Floating "chat on WhatsApp" button, bottom right on every page.
  * Opens wa.me with a short pre-filled message. Hidden if no number is set.
  */
-export function WhatsAppButton() {
-  const { whatsapp, whatsappMessage } = siteConfig.contact;
+export async function WhatsAppButton() {
+  const { whatsapp, whatsappMessage } = (await getContent()).settings.contact;
   if (!whatsapp) return null;
   const href = `https://wa.me/${whatsapp}?text=${encodeURIComponent(whatsappMessage)}`;
 

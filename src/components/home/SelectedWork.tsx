@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { projects } from "@/content/projects";
+import type { Project } from "@/lib/cms/types";
 import { ProjectCard } from "../ProjectCard";
 
 const layout = [
@@ -9,7 +9,7 @@ const layout = [
   { col: "md:col-span-6 md:col-start-7 md:-mt-24", aspect: "aspect-[16/10]", sizes: "(min-width: 768px) 50vw, 100vw" },
 ];
 
-export function SelectedWork() {
+export function SelectedWork({ projects }: { projects: Project[] }) {
   const featured = projects.slice(0, 4);
   if (featured.length === 0) return null;
   const allSamples = featured.every((p) => p.isSample);

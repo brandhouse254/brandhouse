@@ -1,11 +1,11 @@
-import { testimonials } from "@/content/testimonials";
+import type { Testimonial } from "@/lib/cms/types";
 import { isDev } from "@/lib/env";
 
 /**
- * Renders only genuine testimonials from src/content/testimonials.ts.
+ * Renders only genuine testimonials added in the admin.
  * With none supplied: hidden in production, labelled placeholder in dev.
  */
-export function Testimonials() {
+export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) {
   if (testimonials.length === 0) {
     if (!isDev) return null;
     return (
@@ -14,7 +14,7 @@ export function Testimonials() {
           <div className="border-2 border-dashed border-ink/25 p-8 text-center text-mute-2">
             <p className="font-display text-lg text-ink">Testimonials section (development preview only)</p>
             <p className="mt-2 text-sm">
-              Add approved client quotes to src/content/testimonials.ts. This placeholder is never shown in
+              Add approved client quotes in the admin under Testimonials. This placeholder is never shown in
               production.
             </p>
           </div>
@@ -37,7 +37,8 @@ export function Testimonials() {
                   <p>“{t.quote}”</p>
                 </blockquote>
                 <figcaption className="mt-6 text-mute-2">
-                  <span className="font-medium text-ink">{t.name}</span>, {t.role}, {t.company}
+                  <span className="font-medium text-ink">{t.name}</span>
+                  {[t.role, t.company].filter(Boolean).length ? `, ${[t.role, t.company].filter(Boolean).join(", ")}` : null}
                 </figcaption>
               </figure>
             </li>

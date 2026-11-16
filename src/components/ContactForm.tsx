@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CircleAlert, LoaderCircle } from "lucide-react";
-import { enquiryOptions, siteConfig } from "@/config/site";
-import { services } from "@/content/services";
+import { enquiryOptions } from "@/config/site";
 import {
   enquirySchema,
-  serviceChoices,
+  NOT_SURE,
   toFieldErrors,
   type ContactApiResponse,
   type Enquiry,
@@ -59,7 +58,15 @@ const fieldOrder: (keyof Enquiry)[] = [
 const inputBase =
   "mt-2 block w-full rounded-none border bg-white px-4 py-3.5 text-base text-ink placeholder:text-ink/40 transition-colors focus:border-ink focus:outline-2 focus:outline-offset-0 focus:outline-accent";
 
-export function ContactForm() {
+type ContactFormProps = {
+  /** Services offered in the form, from the admin. */
+  services: { slug: string; title: string }[];
+  /** Public email shown as a fallback if sending fails. */
+  email: string;
+};
+
+export function ContactForm({ services, email }: ContactFormProps) {
+  const serviceChoices = [...services.map((s) => s.title), NOT_SURE];
   const [values, setValues] = useState<Values>(empty);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof Values, boolean>>>({});
@@ -68,12 +75,15 @@ export function ContactForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
+  // The services list only needs reading once, on mount.
+  const servicesRef = useRef(services);
+
   useEffect(() => {
     startedAt.current = Date.now();
     // Preselect a service when arriving from a service page (?service=branding).
     // Read after hydration so the statically rendered form matches the server HTML.
     const slug = new URLSearchParams(window.location.search).get("service");
-    const match = services.find((s) => s.slug === slug);
+    const match = servicesRef.current.find((s) => s.slug === slug);
     if (!match) return;
     const id = requestAnimationFrame(() =>
       setValues((v) => (v.services.length ? v : { ...v, services: [match.title] })),
@@ -219,11 +229,11 @@ export function ContactForm() {
           </p>
           <p className="mt-1 text-ink/80">{status.message}</p>
           {status.code === "not_configured" || status.code === "delivery_failed" ? (
-            siteConfig.contact.email ? (
+            email ? (
               <p className="mt-2 text-ink/80">
                 Email us directly at{" "}
-                <a className="font-medium underline underline-offset-4" href={`mailto:${siteConfig.contact.email}`}>
-                  {siteConfig.contact.email}
+                <a className="font-medium underline underline-offset-4" href={`mailto:${email}`}>
+                  {email}
                 </a>
                 .
               </p>

@@ -2,8 +2,8 @@
 
 import { useEffect, useId, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
-import type { Project } from "@/content/projects";
-import { workCategoryLabels, type WorkCategory } from "@/content/services";
+import type { Project } from "@/lib/cms/types";
+import { workCategoryLabels, type WorkCategory } from "@/lib/cms/types";
 import { cn } from "@/lib/cn";
 import { ProjectCard } from "./ProjectCard";
 

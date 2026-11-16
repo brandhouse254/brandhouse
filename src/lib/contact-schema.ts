@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { enquiryOptions } from "@/config/site";
-import { services } from "@/content/services";
 
-/** Shared by the browser form and the API route so both validate identically. */
-export const serviceChoices = [...services.map((s) => s.title), "Not sure yet"] as const;
+/** "Not sure yet" is always offered after the services listed in the admin. */
+export const NOT_SURE = "Not sure yet";
 
 const optionalText = (max: number) =>
   z
@@ -32,9 +31,11 @@ export const enquirySchema = z.object({
   phone: optionalText(40).refine((v) => v === "" || /^[+()\d\s-]{7,40}$/.test(v), {
     error: "Enter a phone number using digits, spaces, + or -.",
   }),
+  // Service names come from the admin, so they're checked for shape rather than against a fixed list.
   services: z
-    .array(z.enum(serviceChoices), { error: "Choose at least one service." })
-    .min(1, { error: "Choose at least one service." }),
+    .array(z.string().trim().min(1).max(120), { error: "Choose at least one service." })
+    .min(1, { error: "Choose at least one service." })
+    .max(13),
   budget: z.enum(enquiryOptions.budgets, { error: "Choose a budget range." }),
   timeline: z.enum(enquiryOptions.timelines, { error: "Choose a timeline." }),
   description: z

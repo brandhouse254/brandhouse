@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { Project } from "@/content/projects";
+import type { Project } from "@/lib/cms/types";
 import { cn } from "@/lib/cn";
 
 type Props = {

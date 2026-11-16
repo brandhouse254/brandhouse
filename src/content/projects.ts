@@ -1,4 +1,3 @@
-import { siteConfig } from "@/config/site";
 import type { WorkCategory } from "./services";
 
 /**
@@ -50,7 +49,8 @@ const img = (slug: string, n: number, alt: string): ProjectImage => ({
   height: 1200,
 });
 
-const allProjects: Project[] = [
+/** Seed data: the starting content for the admin (see src/lib/cms/defaults.ts). */
+export const seedProjects: Project[] = [
   {
     slug: "electric-vehicle-launch-film",
     title: "Launch film for an electric motorbike",
@@ -214,24 +214,3 @@ const allProjects: Project[] = [
     outcome: null,
   },
 ];
-
-export const projects: Project[] = allProjects.filter(
-  (p) => !p.isSample || siteConfig.showSampleProjects,
-);
-
-export function getProject(slug: string) {
-  return projects.find((p) => p.slug === slug);
-}
-
-export function getRelatedProjects(project: Project, count = 2) {
-  return projects
-    .filter((p) => p.slug !== project.slug)
-    .map((p) => ({ p, score: p.categories.filter((c) => project.categories.includes(c)).length }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, count)
-    .map(({ p }) => p);
-}
-
-export function getProjectsByCategory(category: WorkCategory) {
-  return projects.filter((p) => p.categories.includes(category));
-}

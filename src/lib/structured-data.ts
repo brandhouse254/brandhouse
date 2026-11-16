@@ -1,6 +1,6 @@
-import { activeSocialLinks, siteConfig } from "@/config/site";
-import type { Service } from "@/content/services";
-import type { Project } from "@/content/projects";
+import { siteConfig } from "@/config/site";
+import { activeSocialLinks } from "@/lib/cms/public";
+import type { Project, Service, SiteContent } from "@/lib/cms/types";
 import { absoluteUrl } from "./seo";
 
 /**
@@ -9,18 +9,20 @@ import { absoluteUrl } from "./seo";
  */
 const orgId = `${siteConfig.url}/#organization`;
 
-export function organizationSchema() {
+export function organizationSchema(content: SiteContent) {
+  const { contact, descriptor, statement } = content.settings;
+  const social = activeSocialLinks(content);
   const org: Record<string, unknown> = {
     "@type": "Organization",
     "@id": orgId,
     name: siteConfig.name,
     url: siteConfig.url,
     logo: absoluteUrl("/brand/brand-house-icon-512.png"),
-    description: siteConfig.statement,
-    slogan: siteConfig.descriptor,
+    description: statement,
+    slogan: descriptor,
   };
-  if (siteConfig.contact.email) org.email = siteConfig.contact.email;
-  if (siteConfig.contact.phone) org.telephone = siteConfig.contact.phone;
+  if (contact.email) org.email = contact.email;
+  if (contact.phone) org.telephone = contact.phone;
   org.areaServed = { "@type": "Country", name: "Kenya" };
   org.knowsAbout = [
     "Brand strategy",
@@ -31,16 +33,16 @@ export function organizationSchema() {
     "Social media marketing",
     "Digital advertising",
   ];
-  if (siteConfig.contact.phone || siteConfig.contact.email) {
+  if (contact.phone || contact.email) {
     org.contactPoint = {
       "@type": "ContactPoint",
       contactType: "sales",
       areaServed: "KE",
-      ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
-      ...(siteConfig.contact.email ? { email: siteConfig.contact.email } : {}),
+      ...(contact.phone ? { telephone: contact.phone } : {}),
+      ...(contact.email ? { email: contact.email } : {}),
     };
   }
-  if (activeSocialLinks.length) org.sameAs = activeSocialLinks.map((s) => s.href);
+  if (social.length) org.sameAs = social.map((s) => s.href);
   return org;
 }
 

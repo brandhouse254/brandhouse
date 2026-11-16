@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Corners } from "@/components/Corners";
 import { buttonClasses } from "@/components/Button";
+import SiteLayout from "./(site)/layout";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
+    <SiteLayout>
     <section className="bg-ink text-white">
       <div className="shell flex min-h-[90svh] flex-col justify-center py-36">
         <div className="relative px-6 py-14 sm:px-10 md:px-16 md:py-20">
@@ -33,5 +35,6 @@ export default function NotFound() {
         </div>
       </div>
     </section>
+    </SiteLayout>
   );
 }

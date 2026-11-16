@@ -11,7 +11,7 @@ export type Testimonial = {
   company: string;
 };
 
-export const testimonials: Testimonial[] = [
+export const seedTestimonials: Testimonial[] = [
   // {
   //   quote: "…",
   //   name: "Full name",

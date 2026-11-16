@@ -26,7 +26,8 @@ export type Service = {
   meta: { title: string; description: string };
 };
 
-export const services: Service[] = [
+/** Seed data: the starting content for the admin (see src/lib/cms/defaults.ts). */
+export const seedServices: Service[] = [
   {
     slug: "branding",
     number: "01",
@@ -283,17 +284,6 @@ export const services: Service[] = [
     },
   },
 ];
-
-export function getService(slug: string) {
-  return services.find((s) => s.slug === slug);
-}
-
-export const workCategoryLabels: Record<WorkCategory, string> = {
-  branding: "Branding",
-  film: "Film & Production",
-  web: "Web & Digital",
-  marketing: "Marketing Campaigns",
-};
 
 export const processSteps = [
   {

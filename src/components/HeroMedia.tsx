@@ -9,6 +9,8 @@ type HeroMediaProps = {
   posterAlt: string;
   /** Video sources, tried in order. Muted and looped; never plays audio. */
   videoSources?: { src: string; type: string }[];
+  /** Small frozen timecode, top right. Empty hides it. */
+  timecode?: string;
 };
 
 /**
@@ -18,7 +20,7 @@ type HeroMediaProps = {
  *   reduced motion or has Data Saver on.
  * - A visible pause control satisfies WCAG 2.2.2 for moving content.
  */
-export function HeroMedia({ poster, posterAlt, videoSources = [] }: HeroMediaProps) {
+export function HeroMedia({ poster, posterAlt, videoSources = [], timecode = "" }: HeroMediaProps) {
   const hasVideo = videoSources.length > 0;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [allowVideo, setAllowVideo] = useState(false);
@@ -85,9 +87,11 @@ export function HeroMedia({ poster, posterAlt, videoSources = [] }: HeroMediaPro
 
       {/* Static slate: a frozen timecode (no running counter or recording dot) and the pause control */}
       <div className="absolute right-[clamp(1.25rem,4vw,3.5rem)] top-24 z-10 flex items-center gap-3 md:top-28">
-        <span className="type-meta font-display tabular-nums text-white/60" aria-hidden>
-          00:00:18:06
-        </span>
+        {timecode ? (
+          <span className="type-meta font-display tabular-nums text-white/60" aria-hidden>
+            {timecode}
+          </span>
+        ) : null}
         {showVideo ? (
           <button
             type="button"

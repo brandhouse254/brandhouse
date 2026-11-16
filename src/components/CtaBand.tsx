@@ -1,4 +1,5 @@
 import { siteConfig } from "@/config/site";
+import { getContent } from "@/lib/cms/store";
 import { ButtonLink } from "./Button";
 import { Corners } from "./Corners";
 
@@ -10,13 +11,13 @@ type Props = {
   label?: string;
 };
 
-export function CtaBand({
+export async function CtaBand({
   title = "Let’s build something worth noticing.",
   body = "Have a brand to build, a story to tell or a business ready for its next chapter? Let’s talk.",
   href = siteConfig.cta.primary.href,
   label = siteConfig.cta.primary.label,
 }: Props) {
-  const email = siteConfig.contact.email;
+  const email = (await getContent()).settings.contact.email;
   return (
     <section aria-labelledby="cta-title" className="bg-ink text-white">
       <div className="shell py-24 md:py-36">

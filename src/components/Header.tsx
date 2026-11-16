@@ -17,7 +17,7 @@ function hasDarkHero(pathname: string) {
   );
 }
 
-export function Header() {
+export function Header({ contact }: { contact: { email: string; phone: string } }) {
   const pathname = usePathname() || "/";
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -200,20 +200,20 @@ export function Header() {
             >
               {siteConfig.cta.primary.label}
             </Link>
-            {siteConfig.contact.email ? (
+            {contact.email ? (
               <a
-                href={`mailto:${siteConfig.contact.email}`}
+                href={`mailto:${contact.email}`}
                 className="mt-4 block text-center text-white/70 underline-offset-4 hover:underline"
               >
-                {siteConfig.contact.email}
+                {contact.email}
               </a>
             ) : null}
-            {siteConfig.contact.phone ? (
+            {contact.phone ? (
               <a
-                href={`tel:${siteConfig.contact.phone.replace(/\s+/g, "")}`}
+                href={`tel:${contact.phone.replace(/\s+/g, "")}`}
                 className="mt-2 block text-center text-white/70 underline-offset-4 hover:underline"
               >
-                {siteConfig.contact.phone}
+                {contact.phone}
               </a>
             ) : null}
           </div>
