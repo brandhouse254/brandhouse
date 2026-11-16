@@ -36,11 +36,21 @@ npm run start       # serve the production build on :3000
 npm run check       # lint + typecheck + build in one go
 ```
 
-## 2. Edit content
+## Admin (brandhouse.co.ke/admin)
+
+Everything on the site can be edited in the browser at **/admin**: homepage hero (headline, image, background video), introduction and "why us" sections, work and case studies (with drafts, galleries and video), services, About page, testimonials, contact details and social links. There is a media library, version history with one-click restore, and team accounts.
+
+- **First sign-in:** open `/admin/setup` and enter the one-time `ADMIN_SETUP_CODE`. That creates the owner account. The setup page closes for good once an owner exists.
+- **Roles:** owners can do everything, including adding people, resetting passwords and restoring old versions. Editors can edit content and upload media.
+- **Storage:** content, accounts (encrypted) and uploads live in the project's Vercel Blob store (`BLOB_READ_WRITE_TOKEN`). Until the first save, the site shows the original content from `src/content/` and `src/config/site.ts`, which now act as the starting point.
+- **Previews:** preview deployments use their own content, accounts and upload folder, so testing never touches the live site.
+- **Environment variables:** `AUTH_SECRET` (signs sessions, encrypts accounts; changing it signs everyone out and makes the account list unreadable) and `ADMIN_SETUP_CODE`.
+
+## 2. Edit content in code (optional)
 
 | What | Where |
 | --- | --- |
-| Business details: email, phone, location, social links, nav, CTA labels, enquiry budget/timeline options | `src/config/site.ts` |
+| Starting content for the admin (used until the first save): business details, nav, enquiry budget/timeline options | `src/config/site.ts` |
 | Service divisions (copy, capabilities, deliverables, SEO titles) | `src/content/services.ts` |
 | Portfolio projects and case studies | `src/content/projects.ts` |
 | Testimonials (hidden until you add real ones) | `src/content/testimonials.ts` |
