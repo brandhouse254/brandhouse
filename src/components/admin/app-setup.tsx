@@ -85,14 +85,18 @@ export function useAppStatus() {
   const refresh = useCallback(async () => {
     const base = { ready: true, standalone: isStandalone(), ios: isIOS() };
     if (!pushSupported()) return setStatus({ ...base, push: "unsupported", endpoint: null });
-    const reg = await registration();
-    const sub = await reg.pushManager.getSubscription();
-    const perm = Notification.permission;
-    setStatus({
-      ...base,
-      push: perm === "denied" ? "denied" : sub ? "on" : perm === "granted" ? "off" : "default",
-      endpoint: sub?.endpoint ?? null,
-    });
+    try {
+      const reg = await registration();
+      const sub = await reg.pushManager.getSubscription();
+      const perm = Notification.permission;
+      setStatus({
+        ...base,
+        push: perm === "denied" ? "denied" : sub ? "on" : perm === "granted" ? "off" : "default",
+        endpoint: sub?.endpoint ?? null,
+      });
+    } catch {
+      setStatus({ ...base, push: "unsupported", endpoint: null });
+    }
   }, []);
 
   useEffect(() => {
