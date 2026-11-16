@@ -60,14 +60,15 @@ function firstDifference(a: unknown, b: unknown, path = ""): string | null {
 
 const attempts = new Map<string, { count: number; until: number }>();
 
-export type FormState = { error?: string; message?: string } | undefined;
+/** `values` refills the form after an error (React resets forms after each submit); never passwords. */
+export type FormState = { error?: string; message?: string; values?: Record<string, string> } | undefined;
 
 export async function login(_prev: FormState, form: FormData): Promise<FormState> {
   const email = normaliseEmail(String(form.get("email") ?? ""));
   const password = String(form.get("password") ?? "");
   const slot = attempts.get(email);
   if (slot && slot.count >= 5 && slot.until > Date.now()) {
-    return { error: "Too many attempts. Wait 15 minutes, or ask an owner to reset your password." };
+    return { error: "Too many attempts. Wait 15 minutes, or ask an owner to reset your password.", values: { email } };
   }
 
   const { users } = await readUsers();
@@ -77,7 +78,7 @@ export async function login(_prev: FormState, form: FormData): Promise<FormState
     const next = { count: (slot && slot.until > Date.now() ? slot.count : 0) + 1, until: Date.now() + 15 * 60_000 };
     attempts.set(email, next);
     await new Promise((r) => setTimeout(r, 400));
-    return { error: "That email and password don't match an active account." };
+    return { error: "That email and password don't match an active account.", values: { email } };
   }
   attempts.delete(email);
 
@@ -97,10 +98,11 @@ export async function logout() {
 /* ───────────── First owner ───────────── */
 
 export async function setupOwner(_prev: FormState, form: FormData): Promise<FormState> {
+  const values = { code: String(form.get("code") ?? ""), name: String(form.get("name") ?? ""), email: String(form.get("email") ?? "") };
   const expected = process.env.ADMIN_SETUP_CODE?.trim();
-  if (!expected) return { error: "Setup isn't enabled on this site (ADMIN_SETUP_CODE is missing)." };
-  const code = String(form.get("code") ?? "").trim().toUpperCase();
-  if (!safeEqualText(code, expected.toUpperCase())) return { error: "That setup code isn't right." };
+  if (!expected) return { error: "Setup isn't enabled on this site (ADMIN_SETUP_CODE is missing).", values };
+  const code = values.code.trim().toUpperCase();
+  if (!safeEqualText(code, expected.toUpperCase())) return { error: "That setup code isn't right.", values };
 
   const parsed = z
     .object({
@@ -111,7 +113,7 @@ export async function setupOwner(_prev: FormState, form: FormData): Promise<Form
     })
     .refine((v) => v.password === v.confirm, { error: "The two passwords don't match.", path: ["confirm"] })
     .safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: describeIssue(parsed.error) };
+  if (!parsed.success) return { error: describeIssue(parsed.error), values };
 
   const passwordHash = await hashPassword(parsed.data.password);
   let created;
@@ -123,7 +125,7 @@ export async function setupOwner(_prev: FormState, form: FormData): Promise<Form
       return u;
     });
   } catch (e) {
-    return { error: failure(e).error };
+    return { error: failure(e).error, values };
   }
   await startSession(created);
   redirect("/admin");

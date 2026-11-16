@@ -115,7 +115,7 @@ export function LoginForm() {
   const [state, action, pending] = useActionState(login, undefined);
   return (
     <form action={action} className="space-y-5">
-      <Input label="Email" name="email" type="email" autoComplete="username" autoFocus />
+      <Input label="Email" name="email" type="email" autoComplete="username" autoFocus defaultValue={state?.values?.email} />
       <Input label="Password" name="password" type="password" autoComplete="current-password" />
       <Message state={state} />
       <Submit pending={pending}>Sign in</Submit>
@@ -128,9 +128,9 @@ export function SetupForm() {
   const [state, action, pending] = useActionState(setupOwner, undefined);
   return (
     <form action={action} className="space-y-5">
-      <Input label="Setup code" name="code" autoComplete="off" hint="The one-time code you were given, e.g. BH-XXXX-XXXX-XXXX." autoFocus />
-      <Input label="Your name" name="name" autoComplete="name" />
-      <Input label="Email" name="email" type="email" autoComplete="username" hint="You'll sign in with this." />
+      <Input label="Setup code" name="code" autoComplete="off" hint="The one-time code you were given, e.g. BH-XXXX-XXXX-XXXX." autoFocus defaultValue={state?.values?.code} />
+      <Input label="Your name" name="name" autoComplete="name" defaultValue={state?.values?.name} />
+      <Input label="Email" name="email" type="email" autoComplete="username" hint="You'll sign in with this." defaultValue={state?.values?.email} />
       <Input label="Password" name="password" type="password" autoComplete="new-password" hint="At least 10 characters." />
       <Input label="Confirm password" name="confirm" type="password" autoComplete="new-password" />
       <Message state={state} />
