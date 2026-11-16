@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { mediaPrefix } from "./media-prefix";
 
 /**
  * Admin data lives in the same public Blob store as uploaded media, under a
@@ -13,6 +12,11 @@ function dataRoot() {
   // never touches the live site. Uploaded media is shared.
   const scope = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production" ? "cms-preview" : "cms";
   return `${scope}/${key}`;
+}
+
+/** Where uploads go. Previews keep their files apart from the live media library. */
+function mediaPrefix() {
+  return process.env.VERCEL_ENV && process.env.VERCEL_ENV !== "production" ? "preview-media/" : "media/";
 }
 
 export const paths = {

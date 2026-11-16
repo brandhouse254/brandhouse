@@ -23,6 +23,7 @@ import {
 import { logout } from "@/lib/admin/actions";
 import { cn } from "@/lib/cn";
 import { Logo } from "@/components/Logo";
+import { MediaPrefixContext } from "./media";
 
 type ShellUser = { name: string; email: string; role: "owner" | "editor" };
 
@@ -64,7 +65,7 @@ function initials(name: string, email: string) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "BH";
 }
 
-export function AdminShell({ user, children }: { user: ShellUser; children: React.ReactNode }) {
+export function AdminShell({ user, mediaPrefix, children }: { user: ShellUser; mediaPrefix: string; children: React.ReactNode }) {
   const pathname = usePathname() ?? "/admin";
   const [open, setOpen] = useState(false);
 
@@ -171,7 +172,9 @@ export function AdminShell({ user, children }: { user: ShellUser; children: Reac
       ) : null}
 
       <main className="min-w-0 px-4 pb-24 sm:px-8">
-        <div className="mx-auto max-w-5xl pt-2">{children}</div>
+        <div className="mx-auto max-w-5xl pt-2">
+          <MediaPrefixContext.Provider value={mediaPrefix}>{children}</MediaPrefixContext.Provider>
+        </div>
       </main>
     </div>
   );

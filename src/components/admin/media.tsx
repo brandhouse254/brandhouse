@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { upload } from "@vercel/blob/client";
 import { Film, ImageIcon, Images, Link2, Loader2, Search, UploadCloud, X } from "lucide-react";
 import { listMedia, type MediaItem } from "@/lib/admin/actions";
 import { cn } from "@/lib/cn";
-import { mediaPrefix } from "@/lib/cms/media-prefix";
 import { Button, Field, formatBytes, inputClass, TextField } from "./ui";
 
 /* ───────────── Upload ───────────── */
+
+/** Upload folder, decided on the server (previews use their own). Provided by the admin shell. */
+export const MediaPrefixContext = createContext("media/");
 
 export type Uploaded = { url: string; width?: number; height?: number; contentType: string; size: number };
 
@@ -44,6 +46,7 @@ function imageSize(file: File): Promise<{ width: number; height: number } | unde
 }
 
 export function useUploader() {
+  const prefix = useContext(MediaPrefixContext);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +61,7 @@ export function useUploader() {
     setProgress(0);
     try {
       const dims = await imageSize(file);
-      const blob = await upload(`${mediaPrefix()}${slugifyName(file.name)}`, file, {
+      const blob = await upload(`${prefix}${slugifyName(file.name)}`, file, {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
         contentType: file.type || undefined,
@@ -72,7 +75,7 @@ export function useUploader() {
     } finally {
       setProgress(null);
     }
-  }, []);
+  }, [prefix]);
 
   return { send, progress, error, setError };
 }
