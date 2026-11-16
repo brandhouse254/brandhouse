@@ -5,6 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { Film, ImageIcon, Images, Link2, Loader2, Search, UploadCloud, X } from "lucide-react";
 import { listMedia, type MediaItem } from "@/lib/admin/actions";
 import { cn } from "@/lib/cn";
+import { mediaPrefix } from "@/lib/cms/media-prefix";
 import { Button, Field, formatBytes, inputClass, TextField } from "./ui";
 
 /* ───────────── Upload ───────────── */
@@ -57,7 +58,7 @@ export function useUploader() {
     setProgress(0);
     try {
       const dims = await imageSize(file);
-      const blob = await upload(`media/${slugifyName(file.name)}`, file, {
+      const blob = await upload(`${mediaPrefix()}${slugifyName(file.name)}`, file, {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
         contentType: file.type || undefined,

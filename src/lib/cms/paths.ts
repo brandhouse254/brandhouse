@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { mediaPrefix } from "./media-prefix";
 
 /**
  * Admin data lives in the same public Blob store as uploaded media, under a
@@ -18,8 +19,8 @@ export const paths = {
   content: () => `${dataRoot()}/content.json`,
   historyPrefix: () => `${dataRoot()}/history/`,
   users: () => `${dataRoot()}/users.bin`,
-  /** Uploaded images and videos. */
-  mediaPrefix: "media/",
+  /** Uploaded images and videos (previews keep theirs apart from the live library). */
+  mediaPrefix: mediaPrefix(),
 };
 
 export const blobEnabled = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
