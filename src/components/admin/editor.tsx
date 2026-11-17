@@ -283,6 +283,7 @@ function PreviewButton<T>({
       <Button
         variant={compact ? "ghost" : "ghost"}
         onClick={() => void start()}
+        aria-label="Preview"
         disabled={busy || editor.pending}
         className={compact ? "shrink-0" : undefined}
       >

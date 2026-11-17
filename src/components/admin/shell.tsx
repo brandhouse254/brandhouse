@@ -15,6 +15,7 @@ import {
   Images,
   Info,
   LayoutDashboard,
+  BookOpen,
   FileText,
   ListChecks,
   LogOut,
@@ -77,6 +78,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin/team", label: "Team members", icon: Users, ownerOnly: true },
       { href: "/admin/account", label: "My account & app", icon: UserRound },
+      { href: "/admin/guide", label: "Admin guide", icon: BookOpen },
     ],
   },
 ];

@@ -135,7 +135,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
       ) : (
         <ul className="space-y-3">
           {shown.map(({ p, i }) => (
-            <li key={`${p.slug}-${i}`} className="flex items-center gap-4 rounded-2xl bg-white p-3 ring-1 ring-ink/10 transition hover:ring-ink/20">
+            <li key={`${p.slug}-${i}`} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 rounded-2xl bg-white p-3 ring-1 ring-ink/10 transition hover:ring-ink/20 sm:flex">
               <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-paper sm:h-20 sm:w-32">
                 {p.cover.src ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -143,10 +143,10 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/admin/work/${p.slug}`} className="truncate font-display font-semibold hover:underline">
-                    {p.title || "Untitled project"}
-                  </Link>
+                <Link href={`/admin/work/${p.slug}`} className="line-clamp-2 font-display font-semibold leading-snug hover:underline">
+                  {p.title || "Untitled project"}
+                </Link>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   {p.published ? <Badge tone="green">Published</Badge> : <Badge tone="amber">Draft</Badge>}
                   {p.featured ? <Badge tone="orange">Featured</Badge> : null}
                   {p.isSample ? <Badge>Showcase</Badge> : null}
@@ -155,7 +155,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
                   {[p.client, p.industry, p.categories.map((c) => workCategoryLabels[c]).join(", ")].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center">
+              <div className="col-span-2 flex shrink-0 items-center justify-end border-t border-ink/8 pt-1.5 sm:border-0 sm:pt-0">
                 <IconButton
                   label={p.featured ? "Remove from homepage" : "Feature on homepage"}
                   onClick={() => ed.setValue(items.map((x, j) => (j === i ? { ...x, featured: !x.featured } : x)))}

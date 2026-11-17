@@ -149,7 +149,7 @@ export function dueLabel(due: string | null, today: string): { label: string; to
 
 export function Stat({ label, value, note, href, tone }: { label: string; value: ReactNode; note?: ReactNode; href?: string; tone?: "red" | "green" }) {
   return (
-    <div className="relative min-w-0 rounded-2xl bg-white p-5 ring-1 ring-ink/10">
+    <div className="relative min-w-0 rounded-2xl bg-white p-4 ring-1 sm:p-5 ring-ink/10">
       <dt className="text-sm text-mute-2">
         {href ? (
           <Link href={href} className="after:absolute after:inset-0 hover:text-ink">
@@ -161,7 +161,7 @@ export function Stat({ label, value, note, href, tone }: { label: string; value:
       </dt>
       <dd
         className={cn(
-          "mt-2 truncate font-display text-2xl font-semibold tracking-[-0.03em] sm:text-[1.7rem]",
+          "mt-2 whitespace-nowrap font-display text-[1.15rem] font-semibold tabular-nums tracking-[-0.03em] min-[400px]:text-[1.3rem] sm:text-[1.7rem]",
           tone === "red" && "text-red-700",
           tone === "green" && "text-emerald-700",
         )}

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { BookOpen, Download } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { ChangePasswordForm, ProfileForm } from "@/components/admin/auth-forms";
 import { Card } from "@/components/admin/ui";
@@ -22,6 +24,20 @@ export default async function Page() {
         className="mb-6"
       >
         <AppSettings />
+      </Card>
+      <Card title="Admin guide" description="Step-by-step help for everything in the admin, with screenshots. Read it here or download the PDF to share." className="mb-6">
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/guide" className="inline-flex h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-medium text-white">
+            <BookOpen className="size-4" /> Read the guide
+          </Link>
+          <a
+            href="/admin/guide/brand-house-admin-guide.pdf"
+            download="Brand-House-Admin-Guide.pdf"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-medium ring-1 ring-ink/15 hover:ring-ink/30"
+          >
+            <Download className="size-4" /> Download PDF
+          </a>
+        </div>
       </Card>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Profile" description="Your name is shown to the team next to the changes you publish.">

@@ -503,7 +503,7 @@ export function AppSettings() {
               setMessage(err ?? (Notification.permission === "granted" ? "Notifications are on for this device. Send a test below to check." : null));
             }}
           >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} {busy ? "Turning on…" : "Turn on"}
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} <span className="whitespace-nowrap">{busy ? "Turning on…" : "Turn on"}</span>
           </Button>
         ) : null}
       </div>

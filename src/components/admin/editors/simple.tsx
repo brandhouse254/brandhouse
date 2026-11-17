@@ -124,10 +124,10 @@ export function SettingsEditor({ initial }: { initial: Settings }) {
         </Card>
         <Card title="Portfolio">
           <Toggle
-            label="Show sample concept projects"
+            label="Show showcase pieces"
             checked={v.showSampleProjects}
             onChange={(showSampleProjects) => set({ showSampleProjects })}
-            hint="The site launched with illustrative sample projects for fictional brands. Switch this off once you've added enough real work."
+            hint="The site launched with six showcase pieces that show the kind of work Brand House does, without client names. Switch this off once you've added enough real client work."
           />
         </Card>
       </div>

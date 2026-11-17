@@ -238,8 +238,8 @@ export function TeamScreen({ users, meId }: { users: PublicUser[]; meId: string 
       <header className="py-6">
         <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">Team members</h1>
         <p className="mt-0.5 max-w-2xl text-sm text-mute-2">
-          <strong className="font-medium text-ink">Owners</strong> can do everything, including managing the team and restoring old versions.{" "}
-          <strong className="font-medium text-ink">Editors</strong> can edit content and upload media.
+          <strong className="font-medium text-ink">Owners</strong> can do everything, including money, the team and settings.{" "}
+          <strong className="font-medium text-ink">Editors</strong> can edit the website, upload media and work on leads, projects and tasks.
         </p>
       </header>
 

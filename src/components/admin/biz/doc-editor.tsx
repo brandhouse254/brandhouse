@@ -345,8 +345,8 @@ export function DocEditor({
         </section>
         <ErrorNote error={error} />
         <div className="fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t border-ink/10 bg-paper/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md xl:static xl:border-0 xl:bg-transparent xl:p-0">
-          <Button variant="ghost" className="xl:hidden" onClick={() => setPreview(true)}>
-            <Eye className="size-4" /> Preview
+          <Button variant="ghost" className="shrink-0 xl:hidden" onClick={() => setPreview(true)} aria-label="Preview">
+            <Eye className="size-4" /> <span className="hidden sm:inline">Preview</span>
           </Button>
           {isReceipt ? (
             <Button variant="accent" className="flex-1" disabled={pending} onClick={() => void submit("issued")}>
@@ -355,11 +355,11 @@ export function DocEditor({
           ) : (
             <>
               <Button variant="ghost" className="flex-1" disabled={pending} onClick={() => void submit(doc.id ? doc.status : "draft")}>
-                {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {doc.id ? "Save" : "Save draft"}
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} <span className="whitespace-nowrap">{doc.id ? "Save" : "Save draft"}</span>
               </Button>
               {doc.status === "draft" ? (
                 <Button variant="accent" className="flex-1" disabled={pending} onClick={() => void submit("sent")}>
-                  <Send className="size-4" /> Save & mark sent
+                  <Send className="size-4" /> <span className="whitespace-nowrap">Mark as sent</span>
                 </Button>
               ) : null}
             </>

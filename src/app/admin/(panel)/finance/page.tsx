@@ -13,7 +13,7 @@ export default async function FinancePage() {
   const today = todayKE();
   const [snap, owed, docs, settings] = await Promise.all([monthSnapshot(), receivables(), listInvoices(), getBusinessSettings()]);
   const m = snap.month;
-  const setupNeeded = !settings.mpesaPaybill && !settings.mpesaTill && !settings.bankAccountNumber;
+  const setupNeeded = settings.payOptions.length === 0;
   const openQuotes = docs.filter((d) => d.kind === "quote" && d.status === "sent");
 
   return (
@@ -35,7 +35,7 @@ export default async function FinancePage() {
 
       {setupNeeded ? (
         <Link href="/admin/finance/settings" className="mb-5 block rounded-2xl bg-accent/12 px-5 py-4 text-sm ring-1 ring-accent/30">
-          <span className="font-semibold">First, add how clients pay you.</span> Your M-Pesa Paybill or Till and bank details are printed on every invoice. Open Settings →
+          <span className="font-semibold">First, add how clients pay you.</span> Add your M-Pesa, bank or other payment details once and they print on every invoice. Open Settings →
         </Link>
       ) : null}
 
