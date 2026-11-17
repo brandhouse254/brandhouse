@@ -155,7 +155,7 @@ export function EditorBar<T>({
 
     {/* Phones: Save sits above the bottom tabs, only while there is something to save. */}
     {dirty || pending ? (
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur-md md:hidden">
+      <div className="fixed inset-x-0 bottom-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 border-t border-ink/10 bg-paper/95 px-4 pt-3 backdrop-blur-md md:hidden">
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <Button variant="ghost" onClick={discard} disabled={pending} className="shrink-0">
             <RotateCcw className="size-4" /> Discard

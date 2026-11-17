@@ -2,7 +2,60 @@ import { siteConfig } from "@/config/site";
 import { seedServices } from "@/content/services";
 import { seedProjects } from "@/content/projects";
 import { seedTestimonials } from "@/content/testimonials";
-import type { SiteContent } from "./types";
+import { factPhotos, photos } from "./stock";
+import type { PagesContent, ReelFrame, SiteContent } from "./types";
+
+const frame = (key: keyof typeof photos, label: string): ReelFrame => ({ ...photos[key], label });
+
+/** Photos drifting past in the homepage hero reel. */
+export const defaultReel: ReelFrame[] = [
+  frame("skincare", "Product shoot"),
+  frame("yellowBlazer", "Social ad"),
+  frame("leafCrown", "Beauty campaign"),
+  frame("afro", "Portrait series"),
+  frame("dropper", "Packaging"),
+  frame("coffeeHandover", "Brand film"),
+  frame("braids", "Lookbook"),
+  frame("carpenter", "Founder story"),
+  frame("mintPhone", "Launch content"),
+];
+
+export const defaultPages: PagesContent = {
+  home: {
+    workTitle: "Made to be noticed.",
+    workLead:
+      "Launch campaigns, packaging, films, lookbooks, websites and social content, planned and produced by one team so every piece looks like the same brand.",
+    servicesTitle: "What we make",
+    servicesLead: "One team for the whole brand: how it looks, how it sounds on camera, where it lives online and who gets to see it.",
+    processTitle: "How we work",
+    processLead: "Every project moves through the same four stages. You sign off at each one before we move on.",
+    testimonialsTitle: "What clients say",
+  },
+  work: {
+    title: "Work that gets noticed.",
+    intro: "Campaigns, packaging, films, lookbooks, websites and social content. Filter by discipline, or open any piece to see how it comes together.",
+  },
+  services: {
+    title: "Everything a brand needs to be seen and chosen.",
+    intro:
+      "Four divisions under one roof. Hire one for a single project, or bring in several so your identity, content, website and campaigns are planned together from the start.",
+  },
+  contact: {
+    title: "Start a project",
+    intro:
+      "Whether you have a detailed brief or just an idea, tell us what you want to build. The more context you share, the more useful our first conversation will be.",
+    steps: [
+      { title: "We read your brief", body: "Every enquiry is read by the people who would work on it." },
+      { title: "We get in touch", body: "We follow up to ask questions and understand what success looks like for you." },
+      { title: "We propose a plan", body: "You receive a suggested approach, timeline and cost to review before anything is agreed." },
+    ],
+  },
+  cta: {
+    title: "Let’s build something worth noticing.",
+    body: "Have a brand to build, a story to tell or a business ready for its next chapter? Let’s talk.",
+    buttonLabel: "Start a project",
+  },
+};
 
 /**
  * The site's content as it was hand-written before the admin existed. Used
@@ -46,6 +99,9 @@ export function defaultContent(): SiteContent {
       },
       video: null,
       timecode: "00:00:18:06",
+      reel: defaultReel.map((f) => ({ ...f })),
+      making: ["brand films", "identities", "websites", "campaigns"],
+      ticker: [],
     },
     intro: {
       title: "More than creative. Built for impact.",
@@ -55,18 +111,22 @@ export function defaultContent(): SiteContent {
         {
           title: "Who we work with",
           body: "Established companies refreshing how they show up, and startups and growing businesses building a brand for the first time.",
+          image: { ...factPhotos[0] },
         },
         {
           title: "What we bring together",
           body: "Brand identity, film and photography, websites and digital marketing, planned by one team so they work as one.",
+          image: { ...factPhotos[1] },
         },
         {
           title: "What to expect",
           body: "A clear brief, honest timelines and costs, regular reviews, and work you can use the day it is delivered.",
+          image: { ...factPhotos[2] },
         },
       ],
     },
     difference: {
+      image: { ...photos.crewNairobi },
       title: "One creative partner. A bigger picture.",
       lead: "Most businesses juggle a designer, a production house, a web developer and a social media manager. We bring that work together so it adds up.",
       points: [
@@ -96,7 +156,7 @@ export function defaultContent(): SiteContent {
       title: "We build brands that people recognise, remember and choose.",
       intro:
         "Brand House is a creative, media and digital agency. We sit where strategy, storytelling, design and technology meet, and we help businesses use all four to grow their visibility.",
-      image: { src: "/media/about.jpg", alt: "Abstract placeholder of warm and teal out-of-focus light" },
+      image: { ...photos.crewNairobi },
       purposeTitle: "Why we exist",
       purposeParagraphs: [
         "Most businesses have to piece together their brand from several suppliers: a designer for the logo, a production company for the advert, a developer for the website, someone else for social media. Each does their part, but the parts rarely add up to one clear brand.",
@@ -152,8 +212,10 @@ export function defaultContent(): SiteContent {
       cover: { ...p.cover },
       gallery: p.gallery.map((g) => ({ ...g })),
       video: p.video ? { ...p.video } : null,
+      link: p.link ? { ...p.link } : null,
     })),
     testimonials: seedTestimonials.map((t) => ({ ...t })),
+    pages: structuredClone(defaultPages),
     updatedAt: null,
     updatedBy: null,
   };

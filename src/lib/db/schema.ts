@@ -159,6 +159,15 @@ export function SCHEMA_SQL(s: string): string[] {
       created_at timestamptz NOT NULL DEFAULT now()
     )`,
 
+    // Later additions (safe to run again).
+    `ALTER TABLE ${s}.clients ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE ${s}.projects ADD COLUMN IF NOT EXISTS details jsonb NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE ${s}.invoices ADD COLUMN IF NOT EXISTS bill_to jsonb`,
+    `ALTER TABLE ${s}.invoices ADD COLUMN IF NOT EXISTS project_title text NOT NULL DEFAULT ''`,
+    `ALTER TABLE ${s}.invoices ADD COLUMN IF NOT EXISTS pay_methods jsonb NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE ${s}.invoices ADD COLUMN IF NOT EXISTS show_signature boolean NOT NULL DEFAULT true`,
+    `ALTER TABLE ${s}.payments ADD COLUMN IF NOT EXISTS receipt_no text NOT NULL DEFAULT ''`,
+
     `CREATE INDEX IF NOT EXISTS leads_stage_idx ON ${s}.leads(stage)`,
     `CREATE INDEX IF NOT EXISTS tasks_assignee_idx ON ${s}.tasks(assignee_id, status)`,
     `CREATE INDEX IF NOT EXISTS tasks_project_idx ON ${s}.tasks(project_id)`,

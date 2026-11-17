@@ -47,7 +47,17 @@ export const invoiceStatuses = {
     { id: "paid", label: "Paid" },
     { id: "void", label: "Void" },
   ],
+  receipt: [
+    { id: "issued", label: "Issued" },
+    { id: "void", label: "Void" },
+  ],
 } as const;
+
+export const projectPriorities = [
+  { id: "low", label: "Low" },
+  { id: "normal", label: "Normal" },
+  { id: "high", label: "High" },
+] as const;
 
 export const paymentMethods = [
   { id: "mpesa", label: "M-Pesa" },
@@ -105,17 +115,60 @@ export type Lead = {
 
 export type Note = { id: string; userId: string; userName: string; body: string; createdAt: string };
 
+/** Extra, optional facts about a client. Stored together so new ones can be added freely. */
+export type ClientDetails = {
+  /** What they want from Brand House: the project or need that brought them in. */
+  needs: string;
+  role: string;
+  altPhone: string;
+  industry: string;
+  website: string;
+  social: string;
+  location: string;
+  source: string;
+};
+
+export const blankClientDetails: ClientDetails = { needs: "", role: "", altPhone: "", industry: "", website: "", social: "", location: "", source: "" };
+
 export type Client = {
   id: string;
   name: string;
   company: string;
   email: string;
   phone: string;
+  /** Kept for older records; no longer asked for. */
   kraPin: string;
   address: string;
   notes: string;
+  details: ClientDetails;
   archived: boolean;
   createdAt: string;
+};
+
+/** Extra, optional facts about a project. */
+export type ProjectDetails = {
+  services: string[];
+  deliverables: string;
+  contactPerson: string;
+  contactPhone: string;
+  location: string;
+  assetsLink: string;
+  priority: "low" | "normal" | "high";
+  /** Days before the deadline to start reminding the team. */
+  remindDays: number;
+  notes: string;
+};
+
+export const blankProjectDetails: ProjectDetails = {
+  services: [],
+  deliverables: "",
+  contactPerson: "",
+  contactPhone: "",
+  location: "",
+  assetsLink: "",
+  priority: "normal",
+  remindDays: 3,
+  notes: "",
 };
 
 export type Project = {
@@ -129,6 +182,7 @@ export type Project = {
   startOn: string | null;
   dueOn: string | null;
   budget: number | null;
+  details: ProjectDetails;
   createdAt: string;
   completedAt: string | null;
   openTasks: number;
@@ -156,11 +210,20 @@ export type Task = {
 
 export type Comment = Note & { attachments: Attachment[] };
 
-export type InvoiceKind = "quote" | "invoice";
+export type InvoiceKind = "quote" | "invoice" | "receipt";
+
+export const docWords: Record<InvoiceKind, { title: string; word: string; plural: string; to: string }> = {
+  quote: { title: "Quotation", word: "quote", plural: "quotes", to: "Prepared for" },
+  invoice: { title: "Invoice", word: "invoice", plural: "invoices", to: "Bill to" },
+  receipt: { title: "Receipt", word: "receipt", plural: "receipts", to: "Received from" },
+};
+
+/** Who a document is addressed to. A snapshot, so it can be anyone (not only saved clients). */
+export type BillTo = { name: string; company: string; email: string; phone: string; address: string };
 
 export type InvoiceItem = { id?: string; description: string; quantity: number; unitPrice: number };
 
-export type Payment = { id: string; paidOn: string; amount: number; method: string; reference: string; note: string };
+export type Payment = { id: string; paidOn: string; amount: number; method: string; reference: string; note: string; receiptNo: string };
 
 export type Invoice = {
   id: string;
@@ -179,6 +242,11 @@ export type Invoice = {
   terms: string;
   shareToken: string;
   convertedFrom: string | null;
+  billTo: BillTo | null;
+  projectTitle: string;
+  /** Payment options shown on the document (ids from settings); empty shows them all. */
+  payMethods: string[];
+  showSignature: boolean;
   createdAt: string;
   sentAt: string | null;
   items: InvoiceItem[];
@@ -204,6 +272,9 @@ export type Expense = {
   createdAt: string;
 };
 
+/** One way clients can pay, printed on quotes and invoices. */
+export type PayOption = { id: string; label: string; details: string };
+
 export type BusinessSettings = {
   legalName: string;
   kraPin: string;
@@ -225,6 +296,12 @@ export type BusinessSettings = {
   defaultDueDays: number;
   defaultTerms: string;
   invoiceFooter: string;
+  receiptPrefix: string;
+  /** Payment options printed on documents (M-Pesa, bank, Pochi, PayPal, anything). */
+  payOptions: PayOption[];
+  signatureUrl: string;
+  signatoryName: string;
+  signatoryTitle: string;
 };
 
 /** Money as "KES 12,500" (no decimals unless needed). */

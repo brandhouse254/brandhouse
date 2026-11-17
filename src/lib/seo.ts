@@ -3,7 +3,7 @@ import { siteConfig } from "@/config/site";
 
 /** Social preview card (WhatsApp, LinkedIn, Facebook, X): the homepage hero. */
 export const SOCIAL_IMAGE = {
-  url: "/og/brand-house-social.jpg",
+  url: "/og/brand-house-hero.jpg",
   width: 1200,
   height: 630,
   alt: "Brand House: We build brands that move people. A creative, media and digital agency.",

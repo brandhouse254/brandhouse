@@ -56,7 +56,7 @@ const fieldOrder: (keyof Enquiry)[] = [
 ];
 
 const inputBase =
-  "mt-2 block w-full rounded-none border bg-white px-4 py-3.5 text-base text-ink placeholder:text-ink/40 transition-colors focus:border-ink focus:outline-2 focus:outline-offset-0 focus:outline-accent";
+  "mt-2 block w-full rounded-xl border bg-paper px-4 py-3.5 text-base text-ink placeholder:text-ink/40 transition-colors focus:border-ink focus:outline-2 focus:outline-offset-0 focus:outline-accent";
 
 type ContactFormProps = {
   /** Services offered in the form, from the admin. */
@@ -174,8 +174,8 @@ export function ContactForm({ services, email }: ContactFormProps) {
 
   if (status.kind === "success") {
     return (
-      <div ref={resultRef} tabIndex={-1} role="status" className="bg-ink p-8 text-white focus:outline-none md:p-12">
-        <span aria-hidden className="block size-3 bg-accent" />
+      <div ref={resultRef} tabIndex={-1} role="status" className="rounded-[1.75rem] bg-ink p-8 text-white focus:outline-none md:p-12">
+        <span aria-hidden className="block h-px w-10 bg-accent" />
         <h2 className="type-h2 mt-8">Enquiry sent.</h2>
         <p className="type-lead mt-4 max-w-[40ch] text-white/75">
           Thank you. Your project details have reached the Brand House team, and we will reply to the email address
@@ -222,7 +222,7 @@ export function ContactForm({ services, email }: ContactFormProps) {
           ref={resultRef}
           tabIndex={-1}
           role="alert"
-          className="border-l-4 border-[#B3261E] bg-white p-5 focus:outline-none"
+          className="rounded-2xl border-l-4 border-[#B3261E] bg-white p-5 focus:outline-none"
         >
           <p className="font-display font-semibold">
             {status.code === "validation" || errorCount ? "Check the highlighted fields." : "Your enquiry was not sent."}

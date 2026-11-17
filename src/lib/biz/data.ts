@@ -1,9 +1,28 @@
 import { randomBytes } from "node:crypto";
 import { readUsers } from "@/lib/auth/users";
 import { day, iso, num, one, q, S, tx, type Row } from "@/lib/db";
+
+/** jsonb columns arrive parsed from Neon and as text from some drivers. */
+const json = (v: unknown): unknown => {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string") {
+    try {
+      return JSON.parse(v);
+    } catch {
+      return null;
+    }
+  }
+  return v;
+};
 import {
   computeTotals,
+  blankClientDetails,
+  blankProjectDetails,
+  type BillTo,
   type BusinessSettings,
+  type ClientDetails,
+  type PayOption,
+  type ProjectDetails,
   type Client,
   type Comment,
   type Expense,
@@ -47,11 +66,34 @@ export const defaultBusinessSettings: BusinessSettings = {
   defaultDueDays: 14,
   defaultTerms: "Payment due within 14 days of the invoice date. Work starts once the deposit is received.",
   invoiceFooter: "Thank you for working with Brand House.",
+  receiptPrefix: "BH-RCT-",
+  payOptions: [],
+  signatureUrl: "",
+  signatoryName: "",
+  signatoryTitle: "",
 };
+
+/** Older settings kept payment details in fixed fields; turn them into the flexible list. */
+function legacyPayOptions(b: BusinessSettings): PayOption[] {
+  const out: PayOption[] = [];
+  if (b.mpesaPaybill) out.push({ id: "mpesa-paybill", label: "M-Pesa Paybill", details: `Paybill: ${b.mpesaPaybill}\nAccount: ${b.mpesaAccountHint || "Your document number"}` });
+  if (b.mpesaTill) out.push({ id: "mpesa-till", label: "M-Pesa Till (Buy Goods)", details: `Till number: ${b.mpesaTill}` });
+  if (b.bankAccountNumber)
+    out.push({
+      id: "bank",
+      label: "Bank transfer",
+      details: [b.bankName && `${b.bankName}${b.bankBranch ? `, ${b.bankBranch}` : ""}`, b.bankAccountName && `Account name: ${b.bankAccountName}`, `Account number: ${b.bankAccountNumber}`, b.bankSwift && `SWIFT: ${b.bankSwift}`]
+        .filter(Boolean)
+        .join("\n"),
+    });
+  return out;
+}
 
 export async function getBusinessSettings(): Promise<BusinessSettings> {
   const row = await one<{ value: Partial<BusinessSettings> }>(`SELECT value FROM ${S}.settings WHERE key = 'business'`);
-  return { ...defaultBusinessSettings, ...(row?.value ?? {}) };
+  const merged = { ...defaultBusinessSettings, ...(row?.value ?? {}) };
+  if (!row?.value || !("payOptions" in row.value)) merged.payOptions = legacyPayOptions(merged);
+  return merged;
 }
 
 export async function saveBusinessSettings(value: BusinessSettings) {
@@ -227,11 +269,12 @@ const mapClient = (r: Row): Client => ({
   kraPin: String(r.kra_pin ?? ""),
   address: String(r.address ?? ""),
   notes: String(r.notes ?? ""),
+  details: { ...blankClientDetails, ...(json(r.details) as Partial<ClientDetails>) },
   archived: Boolean(r.archived),
   createdAt: iso(r.created_at),
 });
 
-export type ClientInput = Omit<Client, "id" | "createdAt" | "archived"> & { archived?: boolean };
+export type ClientInput = Omit<Client, "id" | "createdAt" | "archived" | "kraPin" | "details"> & { archived?: boolean; kraPin?: string; details?: ClientDetails };
 
 export async function listClients(includeArchived = false): Promise<Client[]> {
   return (
@@ -247,16 +290,16 @@ export async function getClient(id: string): Promise<Client | null> {
 
 export async function createClient(c: ClientInput): Promise<Client> {
   const r = await one(
-    `INSERT INTO ${S}.clients(name, company, email, phone, kra_pin, address, notes) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [c.name, c.company, c.email, c.phone, c.kraPin, c.address, c.notes],
+    `INSERT INTO ${S}.clients(name, company, email, phone, kra_pin, address, notes, details) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb) RETURNING *`,
+    [c.name, c.company, c.email, c.phone, c.kraPin ?? "", c.address, c.notes, JSON.stringify(c.details ?? blankClientDetails)],
   );
   return mapClient(r!);
 }
 
 export async function updateClient(id: string, c: ClientInput) {
   await q(
-    `UPDATE ${S}.clients SET name=$1, company=$2, email=$3, phone=$4, kra_pin=$5, address=$6, notes=$7, archived=$8 WHERE id=$9`,
-    [c.name, c.company, c.email, c.phone, c.kraPin, c.address, c.notes, Boolean(c.archived), id],
+    `UPDATE ${S}.clients SET name=$1, company=$2, email=$3, phone=$4, address=$5, notes=$6, archived=$7, details=$8::jsonb WHERE id=$9`,
+    [c.name, c.company, c.email, c.phone, c.address, c.notes, Boolean(c.archived), JSON.stringify(c.details ?? blankClientDetails), id],
   );
 }
 
@@ -290,6 +333,7 @@ const mapProject = (r: Row): Project => ({
   startOn: day(r.start_on),
   dueOn: day(r.due_on),
   budget: r.budget === null || r.budget === undefined ? null : num(r.budget),
+  details: { ...blankProjectDetails, ...(json(r.details) as Partial<ProjectDetails>) },
   createdAt: iso(r.created_at),
   completedAt: r.completed_at ? iso(r.completed_at) : null,
   openTasks: Number(r.open_tasks ?? 0),
@@ -315,13 +359,16 @@ export async function getProject(id: string): Promise<Project | null> {
   return r ? mapProject(r) : null;
 }
 
-export type ProjectInput = Pick<Project, "clientId" | "name" | "description" | "status" | "startOn" | "dueOn" | "budget"> & { leadId?: string | null };
+export type ProjectInput = Pick<Project, "clientId" | "name" | "description" | "status" | "startOn" | "dueOn" | "budget"> & {
+  leadId?: string | null;
+  details?: ProjectDetails;
+};
 
 export async function createProject(p: ProjectInput): Promise<string> {
   const r = await one<{ id: string }>(
-    `INSERT INTO ${S}.projects(client_id, lead_id, name, description, status, start_on, due_on, budget)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-    [p.clientId, p.leadId ?? null, p.name, p.description, p.status, p.startOn, p.dueOn, p.budget],
+    `INSERT INTO ${S}.projects(client_id, lead_id, name, description, status, start_on, due_on, budget, details)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING id`,
+    [p.clientId, p.leadId ?? null, p.name, p.description, p.status, p.startOn, p.dueOn, p.budget, JSON.stringify(p.details ?? blankProjectDetails)],
   );
   return String(r!.id);
 }
@@ -329,9 +376,10 @@ export async function createProject(p: ProjectInput): Promise<string> {
 export async function updateProject(id: string, p: ProjectInput) {
   await q(
     `UPDATE ${S}.projects SET client_id=$1, name=$2, description=$3, status=$4, start_on=$5, due_on=$6, budget=$7,
-       completed_at = CASE WHEN $4 = 'done' THEN coalesce(completed_at, now()) ELSE NULL END
+       completed_at = CASE WHEN $4 = 'done' THEN coalesce(completed_at, now()) ELSE NULL END,
+       details = coalesce($9::jsonb, details)
      WHERE id=$8`,
-    [p.clientId, p.name, p.description, p.status, p.startOn, p.dueOn, p.budget, id],
+    [p.clientId, p.name, p.description, p.status, p.startOn, p.dueOn, p.budget, id, p.details ? JSON.stringify(p.details) : null],
   );
 }
 
@@ -475,6 +523,10 @@ const mapInvoiceRow = (r: Row) => ({
   terms: String(r.terms ?? ""),
   shareToken: String(r.share_token),
   convertedFrom: (r.converted_from as string) ?? null,
+  billTo: (json(r.bill_to) as BillTo | null) ?? null,
+  projectTitle: String(r.project_title ?? ""),
+  payMethods: (json(r.pay_methods) as string[] | null) ?? [],
+  showSignature: r.show_signature === undefined || r.show_signature === null ? true : Boolean(r.show_signature),
   createdAt: iso(r.created_at),
   sentAt: r.sent_at ? iso(r.sent_at) : null,
 });
@@ -517,6 +569,7 @@ function assembleInvoice(r: Row, items: Row[], payments: Row[]): Invoice {
       method: String(p.method),
       reference: String(p.reference ?? ""),
       note: String(p.note ?? ""),
+      receiptNo: String(p.receipt_no ?? ""),
     }));
   const paid = pays.reduce((s, p) => s + p.amount, 0);
   return { ...base, items: its, payments: pays, totals: computeTotals(its, base, paid) };
@@ -554,16 +607,23 @@ export type InvoiceInput = {
   notes: string;
   terms: string;
   items: InvoiceItem[];
+  billTo: BillTo | null;
+  projectTitle: string;
+  payMethods: string[];
+  showSignature: boolean;
 };
+
+const docPrefix = (kind: InvoiceKind, s: BusinessSettings) => (kind === "quote" ? s.quotePrefix : kind === "receipt" ? s.receiptPrefix : s.invoicePrefix);
 
 export async function createInvoice(kind: InvoiceKind, input: InvoiceInput, createdBy: string, convertedFrom?: string): Promise<string> {
   const settings = await getBusinessSettings();
   const n = await nextNumber(kind);
-  const number = `${kind === "quote" ? settings.quotePrefix : settings.invoicePrefix}${String(n).padStart(4, "0")}`;
+  const number = `${docPrefix(kind, settings)}${String(n).padStart(4, "0")}`;
   const token = randomBytes(18).toString("base64url");
   const row = await one<{ id: string }>(
-    `INSERT INTO ${S}.invoices(kind, number, client_id, project_id, issue_on, due_on, status, vat_rate, vat_inclusive, discount, notes, terms, share_token, converted_from, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING id`,
+    `INSERT INTO ${S}.invoices(kind, number, client_id, project_id, issue_on, due_on, status, vat_rate, vat_inclusive, discount, notes, terms, share_token, converted_from, created_by,
+       bill_to, project_title, pay_methods, show_signature)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,$17,$18::jsonb,$19) RETURNING id`,
     [
       kind,
       number,
@@ -580,6 +640,10 @@ export async function createInvoice(kind: InvoiceKind, input: InvoiceInput, crea
       token,
       convertedFrom ?? null,
       createdBy,
+      input.billTo ? JSON.stringify(input.billTo) : null,
+      input.projectTitle,
+      JSON.stringify(input.payMethods),
+      input.showSignature,
     ],
   );
   const id = String(row!.id);
@@ -600,9 +664,26 @@ async function replaceItems(invoiceId: string, items: InvoiceItem[]) {
 export async function updateInvoice(id: string, input: InvoiceInput) {
   await q(
     `UPDATE ${S}.invoices SET client_id=$1, project_id=$2, issue_on=$3, due_on=$4, status=$5, vat_rate=$6, vat_inclusive=$7,
-       discount=$8, notes=$9, terms=$10, sent_at = CASE WHEN $5 <> 'draft' THEN coalesce(sent_at, now()) ELSE sent_at END
+       discount=$8, notes=$9, terms=$10, sent_at = CASE WHEN $5 <> 'draft' THEN coalesce(sent_at, now()) ELSE sent_at END,
+       bill_to=$12::jsonb, project_title=$13, pay_methods=$14::jsonb, show_signature=$15
      WHERE id=$11`,
-    [input.clientId, input.projectId, input.issueOn, input.dueOn, input.status, input.vatRate, input.vatInclusive, input.discount, input.notes, input.terms, id],
+    [
+      input.clientId,
+      input.projectId,
+      input.issueOn,
+      input.dueOn,
+      input.status,
+      input.vatRate,
+      input.vatInclusive,
+      input.discount,
+      input.notes,
+      input.terms,
+      id,
+      input.billTo ? JSON.stringify(input.billTo) : null,
+      input.projectTitle,
+      JSON.stringify(input.payMethods),
+      input.showSignature,
+    ],
   );
   await replaceItems(id, input.items);
 }
@@ -626,14 +707,32 @@ export async function refreshPaymentStatus(invoiceId: string) {
   if (status !== inv.status) await setInvoiceStatus(invoiceId, status);
 }
 
+/** A standalone receipt holds exactly one payment: the amount received. */
+export async function setReceiptPayment(invoiceId: string, number: string, p: { paidOn: string; amount: number; method: string; reference: string }) {
+  await tx([
+    { text: `DELETE FROM ${S}.payments WHERE invoice_id = $1`, params: [invoiceId] },
+    {
+      text: `INSERT INTO ${S}.payments(invoice_id, paid_on, amount, method, reference, note, receipt_no) VALUES ($1,$2,$3,$4,$5,'',$6)`,
+      params: [invoiceId, p.paidOn, p.amount, p.method, p.reference, number],
+    },
+  ]);
+}
+
+/** A receipt number from the shared receipt sequence. */
+export async function nextReceiptNo(): Promise<string> {
+  const settings = await getBusinessSettings();
+  return `${settings.receiptPrefix}${String(await nextNumber("receipt")).padStart(4, "0")}`;
+}
+
 export async function addPayment(invoiceId: string, p: { paidOn: string; amount: number; method: string; reference: string; note: string }) {
-  await q(`INSERT INTO ${S}.payments(invoice_id, paid_on, amount, method, reference, note) VALUES ($1,$2,$3,$4,$5,$6)`, [
+  await q(`INSERT INTO ${S}.payments(invoice_id, paid_on, amount, method, reference, note, receipt_no) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [
     invoiceId,
     p.paidOn,
     p.amount,
     p.method,
     p.reference,
     p.note,
+    await nextReceiptNo(),
   ]);
   await refreshPaymentStatus(invoiceId);
 }

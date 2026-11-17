@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
 import { siteConfig } from "@/config/site";
 import { pageMetadata } from "@/lib/seo";
-import { Hero } from "@/components/home/Hero";
-import { Intro } from "@/components/home/Intro";
-import { ServicesOverview } from "@/components/home/ServicesOverview";
-import { SelectedWork } from "@/components/home/SelectedWork";
-import { Difference } from "@/components/home/Difference";
-import { Process } from "@/components/home/Process";
-import { Testimonials } from "@/components/home/Testimonials";
+import { HomeDifference, HomeHero, HomeIntro, HomeProcess, HomeServices, HomeTestimonials, HomeWork } from "@/components/site/home";
 import { CtaBand } from "@/components/CtaBand";
 import { getContent } from "@/lib/cms/store";
-import { visibleProjects } from "@/lib/cms/public";
+import { featuredProjects } from "@/lib/cms/public";
 
 export const metadata: Metadata = pageMetadata({
   title: `${siteConfig.name} | Creative, Media & Digital Agency in Kenya`,
@@ -24,13 +18,13 @@ export default async function HomePage() {
   const content = await getContent();
   return (
     <>
-      <Hero hero={content.hero} />
-      <Intro intro={content.intro} />
-      <ServicesOverview services={content.services} />
-      <SelectedWork projects={visibleProjects(content)} />
-      <Difference difference={content.difference} />
-      <Process />
-      <Testimonials testimonials={content.testimonials} />
+      <HomeHero hero={content.hero} services={content.services} />
+      <HomeWork projects={featuredProjects(content)} copy={content.pages.home} />
+      <HomeIntro intro={content.intro} />
+      <HomeServices services={content.services} copy={content.pages.home} />
+      <HomeDifference difference={content.difference} image={content.difference.image} />
+      <HomeProcess copy={content.pages.home} />
+      <HomeTestimonials testimonials={content.testimonials} title={content.pages.home.testimonialsTitle} />
       <CtaBand />
     </>
   );

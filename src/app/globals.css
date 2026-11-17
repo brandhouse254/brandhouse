@@ -294,7 +294,7 @@ body:has(.admin-theme) {
   to { transform: translateX(-50%); }
 }
 
-/* /next hero reel: image columns drifting up and down, plus a rotating word. */
+/* Homepage hero reel: image columns drifting up and down. */
 @keyframes bh-reel-up {
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(0, -50%, 0); }
@@ -303,13 +303,7 @@ body:has(.admin-theme) {
   from { transform: translate3d(0, -50%, 0); }
   to { transform: translate3d(0, 0, 0); }
 }
-@keyframes bh-words {
-  0%, 20% { transform: translateY(0); }
-  25%, 45% { transform: translateY(-20%); }
-  50%, 70% { transform: translateY(-40%); }
-  75%, 95% { transform: translateY(-60%); }
-  100% { transform: translateY(-80%); }
-}
+
 .bh-reel-col {
   animation: bh-reel-up var(--reel-speed, 46s) linear infinite;
   will-change: transform;
@@ -317,11 +311,12 @@ body:has(.admin-theme) {
 .bh-reel-col[data-dir="down"] {
   animation-name: bh-reel-down;
 }
-.bh-reel:hover .bh-reel-col {
-  animation-play-state: paused;
-}
-.bh-words {
-  animation: bh-words 10s var(--ease-out-expo) infinite;
+/* Pause on mouse hover only: on touch screens :hover sticks after a tap and
+   would freeze the reel. */
+@media (hover: hover) and (pointer: fine) {
+  .bh-reel:hover .bh-reel-col {
+    animation-play-state: paused;
+  }
 }
 @keyframes bh-eq {
   0%, 100% { height: 30%; }
@@ -330,4 +325,32 @@ body:has(.admin-theme) {
 .bh-eq {
   height: 60%;
   animation: bh-eq 1s ease-in-out infinite;
+}
+
+/* Branded documents (quotes, invoices, receipts): print exactly as shown. */
+.bh-sheet {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}
+
+/* Quotes, invoices and receipts are printed documents: always light, even
+   inside the dark admin. Restores the site palette for the sheet. */
+.bh-sheet {
+  color-scheme: light;
+  --color-paper: #f5f2ec;
+  --color-paper-2: #ebe6dd;
+  --color-white: #ffffff;
+  --color-ink: #111111;
+  --color-ink-2: #1b1b1b;
+  --color-mute: #888888;
+  --color-mute-2: #66625c;
+  --color-red-700: #b91c1c;
+  --color-emerald-700: #047857;
+  --color-amber-700: #b45309;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { siWhatsapp } from "simple-icons";
@@ -29,13 +29,11 @@ import {
   removePayment,
   saveBusinessSettings,
   saveExpense,
-  saveInvoice,
   setDocumentStatus,
 } from "@/lib/biz/actions";
 import {
-  computeTotals,
+  docWords,
   expenseCategories,
-  kes,
   paymentMethods,
   type BusinessSettings,
   type Expense,
@@ -56,6 +54,7 @@ export function FinanceNav() {
     { href: "/admin/finance", label: "Overview" },
     { href: "/admin/finance/invoices", label: "Invoices" },
     { href: "/admin/finance/quotes", label: "Quotes" },
+    { href: "/admin/finance/receipts", label: "Receipts" },
     { href: "/admin/finance/expenses", label: "Expenses" },
     { href: "/admin/finance/reports", label: "Reports" },
     { href: "/admin/finance/settings", label: "Settings" },
@@ -83,220 +82,11 @@ export function FinanceNav() {
   );
 }
 
-/* ───────────── Quote / invoice editor ───────────── */
-
-type Line = { key: number; description: string; quantity: string; unitPrice: string };
-
-export type EditorDoc = {
-  id: string | null;
-  kind: InvoiceKind;
-  number?: string;
-  clientId: string;
-  projectId: string;
-  issueOn: string;
-  dueOn: string;
-  status: string;
-  vatRate: number;
-  vatInclusive: boolean;
-  discount: number;
-  notes: string;
-  terms: string;
-  items: { description: string; quantity: number; unitPrice: number }[];
-};
-
-export function InvoiceEditor({
-  doc,
-  clients,
-  projects,
-  vatRegistered,
-}: {
-  doc: EditorDoc;
-  clients: Option[];
-  projects: (Option & { clientId: string | null })[];
-  vatRegistered: boolean;
-}) {
-  const router = useRouter();
-  const seq = useRef(doc.items.length + 1);
-  const start = useMemo(
-    () => ({
-      clientId: doc.clientId,
-      projectId: doc.projectId,
-      issueOn: doc.issueOn,
-      dueOn: doc.dueOn,
-      vatRate: String(doc.vatRate),
-      vatInclusive: doc.vatInclusive,
-      discount: doc.discount ? String(doc.discount) : "",
-      notes: doc.notes,
-      terms: doc.terms,
-      lines: (doc.items.length ? doc.items : [{ description: "", quantity: 1, unitPrice: 0 }]).map((it, i) => ({
-        key: i,
-        description: it.description,
-        quantity: String(it.quantity),
-        unitPrice: it.unitPrice ? String(it.unitPrice) : "",
-      })) as Line[],
-    }),
-    [doc],
-  );
-  const [f, setF] = useState(start);
-  const { run, pending, error } = useAction();
-  const dirty = JSON.stringify(f) !== JSON.stringify(start);
-  useUnsavedFlag(dirty);
-  const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));
-  const setLine = (key: number, patch: Partial<Line>) => set("lines", f.lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
-  const items = f.lines.map((l) => ({ description: l.description, quantity: Number(l.quantity) || 0, unitPrice: Number(l.unitPrice) || 0 }));
-  const totals = computeTotals(items, { vatRate: Number(f.vatRate) || 0, vatInclusive: f.vatInclusive, discount: Number(f.discount) || 0 });
-  const clientProjects = projects.filter((p) => !f.clientId || p.clientId === f.clientId);
-  const label = doc.kind === "quote" ? "quote" : "invoice";
-
-  const submit = (status: string) =>
-    run(
-      () =>
-        saveInvoice(doc.id, doc.kind, {
-          clientId: f.clientId,
-          projectId: f.projectId,
-          issueOn: f.issueOn,
-          dueOn: f.dueOn,
-          status,
-          vatRate: Number(f.vatRate) || 0,
-          vatInclusive: f.vatInclusive,
-          discount: Number(f.discount) || 0,
-          notes: f.notes,
-          terms: f.terms,
-          items: items.filter((i) => i.description.trim() || i.unitPrice),
-        }),
-      (r) => {
-        setF(f);
-        router.push(`/admin/finance/doc/${r.id}`);
-      },
-    );
-
-  return (
-    <div className="grid gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_20rem] lg:pb-6">
-      <div className="min-w-0 space-y-5">
-        <section className="rounded-2xl bg-white p-5 ring-1 ring-ink/10">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Choice
-              label="Client"
-              value={f.clientId}
-              onValue={(v) => setF((x) => ({ ...x, clientId: v, projectId: projects.find((p) => p.id === x.projectId)?.clientId === v ? x.projectId : "" }))}
-              placeholder="Choose a client"
-              options={clients.map((c) => ({ value: c.id, label: c.label }))}
-            />
-            <Choice label="Project" value={f.projectId} onValue={(v) => set("projectId", v)} placeholder="No project" options={clientProjects.map((p) => ({ value: p.id, label: p.label }))} />
-            <Input label={doc.kind === "quote" ? "Date" : "Invoice date"} type="date" value={f.issueOn} onValue={(v) => set("issueOn", v)} required />
-            <Input label={doc.kind === "quote" ? "Valid until" : "Due date"} type="date" value={f.dueOn} onValue={(v) => set("dueOn", v)} />
-          </div>
-          <p className="mt-3 text-xs text-mute-2">
-            Client not listed?{" "}
-            <Link href="/admin/clients" className="underline underline-offset-4">
-              Add them in Clients
-            </Link>{" "}
-            first.
-          </p>
-        </section>
-
-        <section className="rounded-2xl bg-white ring-1 ring-ink/10">
-          <header className="flex items-center justify-between border-b border-ink/8 px-5 py-3.5">
-            <h2 className="font-display text-base font-semibold">Items</h2>
-            <span className="hidden text-xs text-mute-2 sm:block">Prices {f.vatInclusive ? "include" : "exclude"} VAT</span>
-          </header>
-          <ul className="divide-y divide-ink/8">
-            {f.lines.map((l, idx) => (
-              <li key={l.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_5rem_8rem_7rem_auto] sm:items-end">
-                <Input
-                  label={idx === 0 ? "Description" : undefined}
-                  aria-label="Description"
-                  value={l.description}
-                  onValue={(v) => setLine(l.key, { description: v })}
-                  placeholder="e.g. Brand identity design"
-                  className="col-span-2 sm:col-span-1"
-                />
-                <Input label={idx === 0 ? "Qty" : undefined} aria-label="Quantity" inputMode="decimal" value={l.quantity} onValue={(v) => setLine(l.key, { quantity: v })} />
-                <Input label={idx === 0 ? "Unit price" : undefined} aria-label="Unit price" inputMode="decimal" value={l.unitPrice} onValue={(v) => setLine(l.key, { unitPrice: v })} placeholder="0" />
-                <p className="col-span-1 self-center text-right text-sm tabular-nums text-ink/80 sm:pb-3">{kes((Number(l.quantity) || 0) * (Number(l.unitPrice) || 0))}</p>
-                <IconButton
-                  label="Remove line"
-                  className="self-center sm:mb-1.5"
-                  disabled={f.lines.length === 1}
-                  onClick={() => set("lines", f.lines.filter((x) => x.key !== l.key))}
-                >
-                  <X className="size-4" />
-                </IconButton>
-              </li>
-            ))}
-          </ul>
-          <div className="px-5 pb-5">
-            <Button size="sm" onClick={() => set("lines", [...f.lines, { key: seq.current++, description: "", quantity: "1", unitPrice: "" }])}>
-              <Plus className="size-4" /> Add line
-            </Button>
-          </div>
-        </section>
-
-        <section className="grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-ink/10 sm:grid-cols-2">
-          <TextBox label="Notes to the client" value={f.notes} onValue={(v) => set("notes", v)} rows={3} placeholder="Scope, deliverables, what's not included…" />
-          <TextBox label="Payment terms" value={f.terms} onValue={(v) => set("terms", v)} rows={3} />
-        </section>
-      </div>
-
-      <aside className="min-w-0 space-y-4 lg:sticky lg:top-6 lg:self-start">
-        <section className="space-y-4 rounded-2xl bg-white p-5 ring-1 ring-ink/10">
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Discount (KES)" inputMode="decimal" value={f.discount} onValue={(v) => set("discount", v)} placeholder="0" />
-            <Input label="VAT %" inputMode="decimal" value={f.vatRate} onValue={(v) => set("vatRate", v)} />
-          </div>
-          <Toggle label="Prices include VAT" checked={f.vatInclusive} onChange={(v) => set("vatInclusive", v)} />
-          {!vatRegistered && Number(f.vatRate) > 0 ? (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Only charge VAT if Brand House is VAT-registered with KRA. Set this in Finance › Settings.
-            </p>
-          ) : null}
-          <dl className="space-y-1.5 border-t border-ink/8 pt-4 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-mute-2">Subtotal</dt>
-              <dd className="tabular-nums">{kes(totals.subtotal)}</dd>
-            </div>
-            {totals.discount ? (
-              <div className="flex justify-between">
-                <dt className="text-mute-2">Discount</dt>
-                <dd className="tabular-nums">−{kes(totals.discount)}</dd>
-              </div>
-            ) : null}
-            {totals.vat ? (
-              <div className="flex justify-between">
-                <dt className="text-mute-2">VAT {f.vatRate}%</dt>
-                <dd className="tabular-nums">{kes(totals.vat)}</dd>
-              </div>
-            ) : null}
-            <div className="flex justify-between border-t border-ink/8 pt-2 font-display text-lg font-semibold">
-              <dt>Total</dt>
-              <dd className="tabular-nums">{kes(totals.total)}</dd>
-            </div>
-          </dl>
-        </section>
-        <ErrorNote error={error} />
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex gap-2 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur-md lg:static lg:flex-col lg:border-0 lg:bg-transparent lg:p-0">
-          <Button variant="ghost" className="flex-1" disabled={pending} onClick={() => void submit(doc.id ? doc.status : "draft")}>
-            {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />} {doc.id ? "Save" : "Save draft"}
-          </Button>
-          {doc.status === "draft" ? (
-            <Button variant="accent" className="flex-1" disabled={pending} onClick={() => void submit("sent")}>
-              <Send className="size-4" /> Save & mark sent
-            </Button>
-          ) : null}
-        </div>
-        <p className="hidden text-xs text-mute-2 lg:block">
-          After saving you can share the {label} by WhatsApp or email, or print it as a PDF.
-        </p>
-      </aside>
-    </div>
-  );
-}
-
 /* ───────────── Document actions ───────────── */
 
 export function ShareButtons({ url, number, kind, clientName, total }: { url: string; number: string; kind: InvoiceKind; clientName: string; total: string }) {
   const [copied, setCopied] = useState(false);
-  const word = kind === "quote" ? "quote" : "invoice";
+  const word = docWords[kind].word;
   const message = `Hello${clientName ? ` ${clientName}` : ""}, here is Brand House ${word} ${number} for ${total}: ${url}`;
   const cls = "inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium ring-1 ring-inset bg-white ring-ink/15 hover:ring-ink/30";
   return (
@@ -353,7 +143,7 @@ export function DocActions({ doc }: { doc: Pick<Invoice, "id" | "kind" | "status
             <X className="size-4" /> Declined
           </Button>
         ) : null}
-        {doc.kind === "invoice" && doc.status !== "void" && doc.status !== "draft" ? (
+        {doc.kind !== "quote" && doc.status !== "void" && doc.status !== "draft" ? (
           <Button
             variant="ghost"
             disabled={pending}
@@ -362,11 +152,11 @@ export function DocActions({ doc }: { doc: Pick<Invoice, "id" | "kind" | "status
             <Ban className="size-4" /> Void
           </Button>
         ) : null}
-        {doc.status === "draft" || doc.kind === "quote" ? (
+        {doc.kind !== "receipt" && (doc.status === "draft" || doc.kind === "quote") ? (
           <Button
             variant="danger"
             disabled={pending}
-            onClick={() => confirm(`Delete ${doc.number}? This can't be undone.`) && void run(() => removeDocument(doc.id), () => router.push(`/admin/finance/${doc.kind === "quote" ? "quotes" : "invoices"}`))}
+            onClick={() => confirm(`Delete ${doc.number}? This can't be undone.`) && void run(() => removeDocument(doc.id), () => router.push(`/admin/finance/${docWords[doc.kind].plural}`))}
           >
             <Trash2 className="size-4" /> Delete
           </Button>
@@ -547,6 +337,7 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettings })
   useUnsavedFlag(dirty);
   const set = (k: keyof BusinessSettings) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const section = "space-y-4 rounded-2xl bg-white p-5 ring-1 ring-ink/10";
+
   return (
     <form
       className="space-y-5 pb-28 lg:pb-0"
@@ -574,17 +365,72 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettings })
       </section>
 
       <section className={section}>
-        <h2 className="font-display text-base font-semibold">How clients pay you</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-base font-semibold">How clients pay you</h2>
+            <p className="mt-1 text-sm text-mute-2">Printed on quotes and invoices. Add as many as you like; choose which to show on each document. Type {"{number}"} to insert the document number.</p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setF((x) => ({ ...x, payOptions: [...x.payOptions, { id: `pay-${Date.now().toString(36)}`, label: "", details: "" }] }))}
+          >
+            <Plus className="size-4" /> Add option
+          </Button>
+        </div>
+        {f.payOptions.length ? (
+          <ul className="space-y-3">
+            {f.payOptions.map((o, i) => (
+              <li key={o.id} className="grid gap-3 rounded-xl bg-paper p-4 ring-1 ring-ink/8 sm:grid-cols-[14rem_minmax(0,1fr)_auto]">
+                <Input
+                  label="Name"
+                  value={o.label}
+                  onValue={(v) => setF((x) => ({ ...x, payOptions: x.payOptions.map((p, j) => (j === i ? { ...p, label: v } : p)) }))}
+                  placeholder="e.g. M-Pesa Paybill"
+                />
+                <TextBox
+                  label="Details"
+                  value={o.details}
+                  onValue={(v) => setF((x) => ({ ...x, payOptions: x.payOptions.map((p, j) => (j === i ? { ...p, details: v } : p)) }))}
+                  rows={3}
+                  placeholder={"Paybill: 123456\nAccount: {number}"}
+                />
+                <IconButton label="Remove option" className="self-start sm:mt-7" onClick={() => setF((x) => ({ ...x, payOptions: x.payOptions.filter((_, j) => j !== i) }))}>
+                  <Trash2 className="size-4" />
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-xl bg-paper px-4 py-3 text-sm text-mute-2">No payment options yet. Add M-Pesa Paybill or Till, Pochi la Biashara, bank transfer, PayPal or anything else.</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: "M-Pesa Paybill", details: "Paybill: \nAccount: {number}" },
+            { label: "M-Pesa Till (Buy Goods)", details: "Till number: " },
+            { label: "Pochi la Biashara", details: "Phone: " },
+            { label: "Bank transfer", details: "Bank: \nAccount name: \nAccount number: \nBranch: " },
+          ]
+            .filter((t) => !f.payOptions.some((o) => o.label === t.label))
+            .map((t) => (
+              <button
+                key={t.label}
+                type="button"
+                onClick={() => setF((x) => ({ ...x, payOptions: [...x.payOptions, { id: `pay-${Date.now().toString(36)}`, ...t }] }))}
+                className="inline-flex h-8 items-center gap-1 rounded-full bg-white px-3 text-xs font-medium ring-1 ring-ink/15 hover:ring-ink/30"
+              >
+                <Plus className="size-3.5" /> {t.label}
+              </button>
+            ))}
+        </div>
+      </section>
+
+      <section className={section}>
+        <h2 className="font-display text-base font-semibold">Signature</h2>
+        <p className="-mt-2 text-sm text-mute-2">Signs your quotes, invoices and receipts. Draw it with your finger or mouse, or upload a photo of it.</p>
+        <SignaturePad url={f.signatureUrl} onChange={(signatureUrl) => setF((x) => ({ ...x, signatureUrl }))} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="M-Pesa Paybill" value={f.mpesaPaybill} onValue={set("mpesaPaybill")} inputMode="numeric" />
-          <Input label="Paybill account instructions" value={f.mpesaAccountHint} onValue={set("mpesaAccountHint")} />
-          <Input label="M-Pesa Till (Buy Goods)" value={f.mpesaTill} onValue={set("mpesaTill")} inputMode="numeric" />
-          <span className="hidden sm:block" />
-          <Input label="Bank" value={f.bankName} onValue={set("bankName")} />
-          <Input label="Account name" value={f.bankAccountName} onValue={set("bankAccountName")} />
-          <Input label="Account number" value={f.bankAccountNumber} onValue={set("bankAccountNumber")} />
-          <Input label="Branch" value={f.bankBranch} onValue={set("bankBranch")} />
-          <Input label="SWIFT code" value={f.bankSwift} onValue={set("bankSwift")} />
+          <Input label="Signed by" value={f.signatoryName} onValue={set("signatoryName")} placeholder="Full name" />
+          <Input label="Title" value={f.signatoryTitle} onValue={set("signatoryTitle")} placeholder="e.g. Managing Director" />
         </div>
       </section>
 
@@ -593,6 +439,7 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettings })
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Input label="Invoice number prefix" value={f.invoicePrefix} onValue={set("invoicePrefix")} />
           <Input label="Quote number prefix" value={f.quotePrefix} onValue={set("quotePrefix")} />
+          <Input label="Receipt number prefix" value={f.receiptPrefix} onValue={set("receiptPrefix")} />
           <Input label="VAT %" inputMode="decimal" value={String(f.defaultVatRate)} onValue={set("defaultVatRate")} />
           <Input label="Days to pay" inputMode="numeric" value={String(f.defaultDueDays)} onValue={set("defaultDueDays")} />
         </div>
@@ -601,7 +448,7 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettings })
       </section>
 
       <ErrorNote error={error} />
-      <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 flex justify-end gap-2 border-t border-ink/10 bg-paper/95 px-4 py-3 backdrop-blur-md lg:static lg:border-0 lg:bg-transparent lg:p-0">
+      <div className="fixed inset-x-0 bottom-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex justify-end gap-2 border-t border-ink/10 bg-paper/95 px-4 pt-3 backdrop-blur-md lg:static lg:border-0 lg:bg-transparent lg:p-0">
         {dirty ? (
           <Button variant="ghost" onClick={() => setF(saved)} disabled={pending}>
             Discard
@@ -612,5 +459,130 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettings })
         </Button>
       </div>
     </form>
+  );
+}
+
+/* ───────────── Signature pad ───────────── */
+
+function SignaturePad({ url, onChange }: { url: string; onChange: (url: string) => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [mode, setMode] = useState<"view" | "draw">(url ? "view" : "draw");
+  const [hasInk, setHasInk] = useState(false);
+  const { send, progress, error } = useUploader();
+  const picker = useRef<HTMLInputElement>(null);
+
+  const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const c = canvas.current!;
+    const r = c.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * c.width, y: ((e.clientY - r.top) / r.height) * c.height };
+  };
+  const ctx = () => {
+    const c = canvas.current!.getContext("2d")!;
+    c.lineWidth = 5;
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    c.strokeStyle = "#111";
+    return c;
+  };
+  const clear = () => {
+    const c = canvas.current;
+    c?.getContext("2d")?.clearRect(0, 0, c.width, c.height);
+    setHasInk(false);
+  };
+  const saveDrawing = async () => {
+    const c = canvas.current;
+    if (!c) return;
+    const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/png"));
+    if (!blob) return;
+    const up = await send(new File([blob], `signature-${Date.now()}.png`, { type: "image/png" }));
+    if (up) {
+      onChange(up.url);
+      setMode("view");
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {mode === "view" && url ? (
+        <div className="flex h-36 items-center justify-center rounded-xl bg-paper ring-1 ring-ink/10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt="Your signature" className="max-h-28 w-auto object-contain" />
+        </div>
+      ) : (
+        <canvas
+          ref={canvas}
+          width={900}
+          height={300}
+          aria-label="Draw your signature here"
+          className="h-36 w-full touch-none rounded-xl bg-white ring-1 ring-ink/15 [background-image:linear-gradient(transparent_calc(100%-2.2rem),#11111122_calc(100%-2.2rem),#11111122_calc(100%-2.2rem+1px),transparent_calc(100%-2.2rem+1px))]"
+          onPointerDown={(e) => {
+            drawing.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            const p = point(e);
+            const c = ctx();
+            c.beginPath();
+            c.moveTo(p.x, p.y);
+          }}
+          onPointerMove={(e) => {
+            if (!drawing.current) return;
+            const p = point(e);
+            const c = ctx();
+            c.lineTo(p.x, p.y);
+            c.stroke();
+            setHasInk(true);
+          }}
+          onPointerUp={() => (drawing.current = false)}
+          onPointerCancel={() => (drawing.current = false)}
+        />
+      )}
+      <div className="flex flex-wrap gap-2">
+        {mode === "draw" ? (
+          <>
+            <Button size="sm" variant="primary" disabled={!hasInk || progress !== null} onClick={() => void saveDrawing()}>
+              {progress !== null ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Use this signature
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clear} disabled={!hasInk}>
+              Clear
+            </Button>
+            {url ? (
+              <Button size="sm" variant="ghost" onClick={() => setMode("view")}>
+                Cancel
+              </Button>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <Button size="sm" onClick={() => setMode("draw")}>
+              <Pencil className="size-4" /> Draw again
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onChange("")}>
+              Remove
+            </Button>
+          </>
+        )}
+        <input
+          ref={picker}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            const up = await send(file);
+            if (up) {
+              onChange(up.url);
+              setMode("view");
+            }
+          }}
+        />
+        <Button size="sm" variant="ghost" onClick={() => picker.current?.click()} disabled={progress !== null}>
+          <Paperclip className="size-4" /> Upload a photo
+        </Button>
+      </div>
+      <ErrorNote error={error} />
+    </div>
   );
 }

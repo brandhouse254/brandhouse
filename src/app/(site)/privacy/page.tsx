@@ -44,7 +44,7 @@ export default function PrivacyPage() {
         intro={<p>Last updated {LAST_UPDATED}. This page explains what information we collect through this website and how we use it.</p>}
       />
       <section className="bg-paper">
-        <div className="shell pb-24 md:pb-36">
+        <div className="shell py-14 md:py-20">
           <div className="max-w-[68ch] space-y-12 text-lg leading-relaxed text-ink/85 [&_h2]:type-h3 [&_h2]:text-ink [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_p+p]:mt-4">
             <div>
               <h2>Who we are</h2>

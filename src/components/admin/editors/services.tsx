@@ -90,7 +90,7 @@ export function ServicesList({ initial }: { initial: Service[] }) {
                     className="hover:text-red-600"
                     disabled={items.length === 1}
                     onClick={() => {
-                      if (confirm(`Delete the "${s.title}" service and its page? You can undo this from Version history.`)) {
+                      if (confirm(`Delete the "${s.title}" service and its page?`)) {
                         ed.setValue(renumber(items.filter((_, j) => j !== i)));
                       }
                     }}
@@ -132,7 +132,7 @@ export function ServiceEditor({ services, slug }: { services: Service[]; slug: s
   const remove = async () => {
     if (isNew) return router.push("/admin/services");
     if (ed.value.length === 1) return alert("Keep at least one service.");
-    if (!confirm(`Delete "${s.title}" and its page? You can undo this from Version history.`)) return;
+    if (!confirm(`Delete "${s.title}" and its page?`)) return;
     deleting.current = true;
     if (await ed.save(renumber(ed.value.filter((_, i) => i !== index)))) router.push("/admin/services");
     else deleting.current = false;

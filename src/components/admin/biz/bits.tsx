@@ -122,6 +122,7 @@ export const docTone: Record<string, Tone> = {
   void: "neutral",
   accepted: "green",
   declined: "red",
+  issued: "green",
 };
 
 /** 16 Nov 2026 */

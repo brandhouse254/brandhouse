@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getContent } from "@/lib/cms/store";
 import { visibleProjects } from "@/lib/cms/public";
 import { pageMetadata } from "@/lib/seo";
-import { PageHero } from "@/components/PageHero";
+import { DarkHero, SECTION } from "@/components/site/bits";
 import { WorkGrid } from "@/components/WorkGrid";
 import { CtaBand } from "@/components/CtaBand";
 
@@ -14,27 +14,17 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function WorkPage() {
-  const projects = visibleProjects(await getContent());
-  const hasSamples = projects.some((p) => p.isSample);
+  const content = await getContent();
+  const projects = visibleProjects(content);
   return (
     <>
-      <PageHero
-        title="Work"
+      <DarkHero
+        title={content.pages.work.title}
         crumbs={[{ name: "Work", path: "/work" }]}
-        intro={
-          hasSamples ? (
-            <p>
-              The projects below are <strong className="font-semibold text-ink">sample concepts</strong> for fictional
-              brands. They show the range of work we take on across identity, film, web and campaigns. Client case
-              studies will be added here as they are published.
-            </p>
-          ) : (
-            <p>Identity, film, web and campaign projects for businesses across Kenya and beyond.</p>
-          )
-        }
+        intro={content.pages.work.intro ? <p>{content.pages.work.intro}</p> : undefined}
       />
-      <section aria-label="Projects" className="bg-paper">
-        <div className="shell pb-24 md:pb-36">
+      <section aria-label="Projects" className="bg-paper-2">
+        <div className={`shell ${SECTION}`}>
           <WorkGrid projects={projects} />
         </div>
       </section>

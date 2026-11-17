@@ -24,7 +24,7 @@ export default async function Page() {
         <AppSettings />
       </Card>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Profile" description="Your name appears in the version history next to the changes you publish.">
+        <Card title="Profile" description="Your name is shown to the team next to the changes you publish.">
           <ProfileForm name={user.name} />
         </Card>
         <Card title="Password" description="Changing it signs you out on every other device.">

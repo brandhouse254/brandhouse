@@ -1,5 +1,5 @@
 import { getContent } from "@/lib/cms/store";
-import { Header } from "@/components/Header";
+import { SiteHeader } from "@/components/site/header";
 import { Footer } from "@/components/Footer";
 import { Analytics } from "@/components/Analytics";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
@@ -12,7 +12,7 @@ export default async function SiteLayout({ children }: Readonly<{ children: Reac
   const { email, phone } = content.settings.contact;
   return (
     <>
-      <Header contact={{ email, phone }} />
+      <SiteHeader email={email} phone={phone} />
       <main id="main" tabIndex={-1} className="focus:outline-none">
         {children}
       </main>

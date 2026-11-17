@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContent } from "@/lib/cms/store";
 import { findService, projectsByCategory } from "@/lib/cms/public";
 import { pageMetadata } from "@/lib/seo";
 import { graph, serviceSchema } from "@/lib/structured-data";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Corners } from "@/components/Corners";
 import { CtaBand } from "@/components/CtaBand";
 import { JsonLd } from "@/components/JsonLd";
 import { ProcessSteps } from "@/components/ProcessSteps";
-import { ProjectCard } from "@/components/ProjectCard";
+import { DarkHero, Kicker, SECTION } from "@/components/site/bits";
+import { ShowcaseCard } from "@/components/site/showcase";
+import { Pic } from "@/components/site/photo";
 
 type Params = { slug: string };
 
@@ -36,95 +35,97 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
   const service = findService(content, slug);
   if (!service) notFound();
 
-  const work = projectsByCategory(content, service.workCategory).slice(0, 2);
+  const work = projectsByCategory(content, service.workCategory).slice(0, 3);
   const related = content.services.filter((s) => s.slug !== service.slug);
 
   return (
     <>
       <JsonLd data={graph(serviceSchema(service))} />
 
-      {/* Hero */}
-      <section className="relative isolate overflow-hidden bg-ink text-white">
-        <div aria-hidden className="absolute inset-0 -z-10">
-          <Image src={service.image.src} alt="" fill priority sizes="100vw" className="object-cover opacity-60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/50 to-ink/40" />
-        </div>
-        <div className="pointer-events-none absolute inset-x-[clamp(0.75rem,2.5vw,2rem)] bottom-[clamp(0.75rem,2.5vw,2rem)] top-[5.25rem] md:top-24">
-          <Corners size="lg" />
-        </div>
-        <div className="shell flex min-h-[88svh] flex-col justify-end pb-[clamp(3rem,8vh,6rem)] pt-36">
-          <Breadcrumbs
-            items={[
-              { name: "Services", path: "/services" },
-              { name: service.title, path: `/services/${service.slug}` },
-            ]}
-            className="mb-10 text-white/75"
-          />
-          <p className="font-display text-lg text-white/75">
-            <span className="tabular-nums">{service.number}</span> {service.title}
-          </p>
-          <h1 className="type-display mt-4 max-w-[17ch]">{service.headline}</h1>
-          <div className="mt-10 grid gap-8 md:grid-cols-12 md:items-end">
-            <p className="type-lead text-white/80 md:col-span-7 lg:col-span-6">{service.intro}</p>
-            <div className="md:col-span-5 md:col-start-8 md:text-right lg:col-span-6 lg:col-start-7">
-              <Link
-                href={`/contact?service=${service.slug}`}
-                className="inline-flex min-h-12 items-center gap-2 rounded-full bg-accent px-6 font-display font-medium text-ink transition-colors hover:bg-white"
-              >
-                Start a {service.title.toLowerCase()} project
-              </Link>
+      <DarkHero
+        crumbs={[
+          { name: "Services", path: "/services" },
+          { name: service.title, path: `/services/${service.slug}` },
+        ]}
+        eyebrow={`${service.number} ${service.title}`}
+        title={service.headline}
+        intro={<p>{service.intro}</p>}
+        aside={
+          service.image.src ? (
+            <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-[#1b1b1b] sm:aspect-[5/4] lg:aspect-[4/5]">
+              <Pic src={service.image.src} alt={service.image.alt} fill priority sizes="(min-width: 1024px) 40vw, 100vw" className="object-cover" />
             </div>
+          ) : undefined
+        }
+      >
+        <div className="mt-8">
+          <Link
+            href={`/contact?service=${service.slug}`}
+            className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-display font-medium text-[#111] transition-colors hover:bg-white"
+          >
+            Start a {service.title.toLowerCase()} project <span aria-hidden>↗</span>
+          </Link>
+        </div>
+      </DarkHero>
+
+      {/* Why it matters */}
+      {service.value.length ? (
+        <section aria-labelledby="value-title" className="bg-paper">
+          <div className={`shell ${SECTION}`}>
+            <h2 id="value-title" className="type-display max-w-[16ch]">
+              Why it matters for your business
+            </h2>
+            <ul className="mt-10 grid gap-4 md:mt-14 md:grid-cols-3">
+              {service.value.map((v, i) => (
+                <li key={v.title} className="rounded-[1.75rem] bg-white p-7 ring-1 ring-ink/8 md:p-8">
+                  <span className="font-display text-sm tabular-nums text-mute-2">
+                    <span className="text-accent-deep">{String(i + 1).padStart(2, "0")}</span> / {String(service.value.length).padStart(2, "0")}
+                  </span>
+                  <h3 className="type-h3 mt-4">{v.title}</h3>
+                  <p className="mt-3 leading-relaxed text-mute-2">{v.body}</p>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
-      {/* Value */}
-      <section aria-labelledby="value-title" className="bg-paper">
-        <div className="shell py-24 md:py-32">
-          <h2 id="value-title" className="type-h2 max-w-[18ch]">
-            Why it matters for your business
-          </h2>
-          <ul className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
-            {service.value.map((v) => (
-              <li key={v.title} className="reveal border-t border-ink/15 pt-6">
-                <h3 className="type-h3">{v.title}</h3>
-                <p className="mt-3 max-w-sm leading-relaxed text-mute-2">{v.body}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* Capabilities and deliverables */}
+      {/* What we do and what you receive */}
       <section aria-labelledby="capabilities-title" className="bg-paper-2">
-        <div className="shell grid gap-14 py-24 md:grid-cols-12 md:py-32">
-          <div className="md:col-span-5">
+        <div className={`shell grid gap-4 lg:grid-cols-2 ${SECTION}`}>
+          <div className="rounded-[2rem] bg-ink p-7 text-white md:p-10">
             <h2 id="capabilities-title" className="type-h2">
               What we do
             </h2>
-            <ul className="mt-10">
+            <ul className="mt-8 flex flex-wrap gap-2">
               {service.capabilities.map((c) => (
-                <li key={c} className="border-b border-ink/12 py-4 font-display text-xl tracking-[-0.02em] md:text-2xl">
+                <li key={c} className="rounded-full bg-white/[0.07] px-4 py-2 font-display text-lg tracking-[-0.01em] ring-1 ring-white/10">
                   {c}
                 </li>
               ))}
             </ul>
+            {service.projectTypes.length ? (
+              <>
+                <h3 className="mt-10 font-display text-lg font-semibold text-white/80">Typical projects</h3>
+                <ul className="mt-4 space-y-2.5 text-white/70">
+                  {service.projectTypes.map((d) => (
+                    <li key={d} className="flex gap-3 leading-snug">
+                      <span aria-hidden className="mt-[0.6em] h-px w-3 shrink-0 bg-accent" />
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </div>
-          <div className="md:col-span-6 md:col-start-7">
-            <h2 className="type-h3">What you receive</h2>
-            <ul className="mt-6 space-y-3 text-ink/80">
+          <div className="rounded-[2rem] bg-white p-7 ring-1 ring-ink/8 md:p-10">
+            <h2 className="type-h2">What you receive</h2>
+            <ul className="mt-8 divide-y divide-ink/10">
               {service.deliverables.map((d) => (
-                <li key={d} className="flex gap-3 leading-snug">
-                  <span aria-hidden className="mt-[0.45em] size-1.5 shrink-0 bg-accent" />
-                  {d}
-                </li>
-              ))}
-            </ul>
-            <h2 className="type-h3 mt-14">Typical projects</h2>
-            <ul className="mt-6 space-y-3 text-ink/80">
-              {service.projectTypes.map((d) => (
-                <li key={d} className="flex gap-3 leading-snug">
-                  <span aria-hidden className="mt-[0.45em] size-1.5 shrink-0 bg-ink/40" />
+                <li key={d} className="flex gap-3 py-3.5 leading-snug">
+                  <span aria-hidden className="mt-[0.15em] flex size-5 shrink-0 items-center justify-center rounded-full bg-accent text-[0.7rem] font-bold text-[#111]">
+                    ✓
+                  </span>
                   {d}
                 </li>
               ))}
@@ -136,9 +137,9 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
       {/* Related work */}
       {work.length ? (
         <section aria-labelledby="related-work-title" className="bg-paper">
-          <div className="shell py-24 md:py-32">
+          <div className={`shell ${SECTION}`}>
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <h2 id="related-work-title" className="type-h2">
+              <h2 id="related-work-title" className="type-display">
                 Related work
               </h2>
               <Link
@@ -148,22 +149,24 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
                 See all {service.title.toLowerCase()} work
               </Link>
             </div>
-            <div className="mt-14 grid gap-14 md:grid-cols-2 md:gap-8">
+            <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {work.map((p) => (
-                <ProjectCard key={p.slug} project={p} />
+                <li key={p.slug} className="h-[28rem] md:h-[30rem]">
+                  <ShowcaseCard project={p} sizes="(min-width: 1024px) 32vw, (min-width: 640px) 48vw, 100vw" />
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
       ) : null}
 
       {/* Process */}
       <section aria-labelledby="service-process-title" className="bg-ink text-white">
-        <div className="shell py-24 md:py-32">
-          <h2 id="service-process-title" className="type-h2 max-w-[20ch]">
+        <div className={`shell ${SECTION}`}>
+          <h2 id="service-process-title" className="type-display max-w-[18ch]">
             How a {service.title.toLowerCase()} project runs
           </h2>
-          <div className="mt-14 md:mt-20">
+          <div className="mt-10 md:mt-14">
             <ProcessSteps notes={service.processNotes} tone="dark" />
           </div>
         </div>
@@ -171,20 +174,32 @@ export default async function ServicePage({ params }: { params: Promise<Params> 
 
       {/* Related services */}
       <section aria-labelledby="related-services-title" className="bg-paper">
-        <div className="shell py-24 md:py-32">
-          <h2 id="related-services-title" className="type-h2 max-w-[22ch]">
-            Works well with
-          </h2>
-          <ul className="mt-12 grid gap-px border-y border-ink/15 md:grid-cols-3">
+        <div className={`shell ${SECTION}`}>
+          <Kicker>
+            <span id="related-services-title">Works well with</span>
+          </Kicker>
+          <ul className="mt-8 grid gap-4 md:grid-cols-3">
             {related.map((r) => (
-              <li key={r.slug} className="group relative py-8 md:px-6 md:first:pl-0 md:[&+&]:border-l md:[&+&]:border-ink/15">
-                <span className="font-display text-sm tabular-nums text-mute-2">{r.number}</span>
-                <h3 className="type-h3 mt-2">
-                  <Link href={`/services/${r.slug}`} className="after:absolute after:inset-0 group-hover:underline group-hover:underline-offset-4">
-                    {r.title}
-                  </Link>
-                </h3>
-                <p className="mt-3 max-w-sm leading-relaxed text-mute-2">{r.summary}</p>
+              <li key={r.slug}>
+                <Link href={`/services/${r.slug}`} className="group relative block aspect-[4/3] overflow-hidden rounded-[1.75rem] bg-[#1b1b1b] text-white">
+                  {r.image.src ? (
+                    <Pic
+                      src={r.image.src}
+                      alt={r.image.alt}
+                      fill
+                      sizes="(min-width: 768px) 32vw, 100vw"
+                      className="object-cover transition-transform duration-[1.2s] ease-[var(--ease-out-expo)] group-hover:scale-[1.05]"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgb(17_17_17/0.9))]" aria-hidden />
+                  <div className="absolute inset-x-0 bottom-0 p-6">
+                    <span className="font-display text-sm tabular-nums text-accent">{r.number}</span>
+                    <h3 className="mt-1 font-display text-2xl font-semibold tracking-[-0.025em]">{r.title}</h3>
+                  </div>
+                  <span aria-hidden className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-full bg-white text-ink transition-transform duration-500 group-hover:rotate-45">
+                    ↗
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

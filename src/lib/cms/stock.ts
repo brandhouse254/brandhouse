@@ -1,9 +1,8 @@
 /**
- * Photography for the /next homepage concept, from Unsplash (free to use under
- * the Unsplash License, no credit required). Served straight from Unsplash's
- * image CDN, resized per device by the loader in ./photo.tsx, so phones never
- * download full-size originals. Swap any of these for Brand House's own shoots
- * once they exist.
+ * Stock photography the site starts with, from Unsplash (free to use under the
+ * Unsplash License, no credit required). Served straight from Unsplash's image
+ * CDN and resized per device (see src/components/site/photo.tsx). Everything
+ * here can be swapped for Brand House's own shoots in the admin.
  */
 export type Photo = { src: string; alt: string };
 
@@ -45,7 +44,7 @@ export const photos = {
   plinth: { src: u("1778521157912-620fd0d3c6e1"), alt: "Sneakers lit on wooden plinths in a dark studio" },
 } satisfies Record<string, Photo>;
 
-/** One image per division, by service slug. */
+/** Default image per division, by service slug. */
 export const servicePhotos: Record<string, Photo> = {
   branding: photos.productOrange,
   "video-production": photos.filmCrew,
@@ -53,5 +52,5 @@ export const servicePhotos: Record<string, Photo> = {
   "digital-marketing": photos.campaignCans,
 };
 
-/** Facts in the intro, one photo each (cycles if there are more facts). */
+/** Default photos for the intro facts, in order. */
 export const factPhotos: Photo[] = [photos.boardroom, photos.planningWall, photos.vendorPhone, photos.shopOwner];

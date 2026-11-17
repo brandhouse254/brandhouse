@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { workCategories } from "./types";
+import { projectFrames, workCategories } from "./types";
 
 /**
  * Validation for every save from the admin. Keeps the stored document in the
@@ -82,17 +82,21 @@ export const heroSchema = z.object({
   image: media,
   video: z.object({ src: requiredSrc, type: z.enum(["video/mp4", "video/webm"]) }).nullable(),
   timecode: text(20, "Timecode"),
+  reel: z.array(media.extend({ label: text(40, "Label") })).max(18),
+  making: z.array(required(30, "Word")).max(8),
+  ticker: z.array(required(40, "Ticker item")).max(16),
 });
 
 export const introSchema = z.object({
   title: required(160, "Heading"),
   statement: text(600, "Statement"),
-  facts: z.array(titleBody).max(6),
+  facts: z.array(titleBody.extend({ image: media.nullable() })).max(6),
 });
 
 export const differenceSchema = z.object({
   title: required(160, "Heading"),
   lead: text(600, "Intro text"),
+  image: media,
   points: z.array(titleBody).max(10),
 });
 
@@ -161,6 +165,36 @@ export const projectSchema = z.object({
     .nullable()
     .transform((v) => (v ? v : null)),
   year: z.string().trim().max(10).optional(),
+  featured: z.boolean(),
+  frame: z.enum(projectFrames),
+  tagline: text(80, "Mock-up line"),
+  link: z
+    .object({ label: required(40, "Link text"), href: href.refine((v) => v !== "", { error: "Add the link." }) })
+    .nullable(),
+});
+
+export const pagesSchema = z.object({
+  home: z.object({
+    workTitle: required(80, "Work heading"),
+    workLead: text(400, "Work intro"),
+    servicesTitle: required(80, "Services heading"),
+    servicesLead: text(400, "Services intro"),
+    processTitle: required(80, "Process heading"),
+    processLead: text(400, "Process intro"),
+    testimonialsTitle: required(80, "Testimonials heading"),
+  }),
+  work: z.object({ title: required(120, "Work page heading"), intro: text(600, "Work page intro") }),
+  services: z.object({ title: required(160, "Services page heading"), intro: text(600, "Services page intro") }),
+  contact: z.object({
+    title: required(120, "Contact page heading"),
+    intro: text(600, "Contact page intro"),
+    steps: z.array(titleBody).max(5),
+  }),
+  cta: z.object({
+    title: required(120, "Call-to-action heading"),
+    body: text(400, "Call-to-action text"),
+    buttonLabel: required(40, "Button text"),
+  }),
 });
 
 export const testimonialSchema = z.object({
@@ -189,6 +223,7 @@ export const sectionSchemas = {
   services: z.array(serviceSchema).min(1, { error: "Keep at least one service." }).max(12).superRefine(uniqueSlugs),
   projects: z.array(projectSchema).max(200).superRefine(uniqueSlugs),
   testimonials: z.array(testimonialSchema).max(30),
+  pages: pagesSchema,
 } as const;
 
 export type SectionKey = keyof typeof sectionSchemas;

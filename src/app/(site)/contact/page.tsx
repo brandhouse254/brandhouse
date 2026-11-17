@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getContent } from "@/lib/cms/store";
 import { pageMetadata } from "@/lib/seo";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { DarkHero } from "@/components/site/bits";
 import { ContactForm } from "@/components/ContactForm";
 
 export const metadata: Metadata = pageMetadata({
@@ -11,81 +11,68 @@ export const metadata: Metadata = pageMetadata({
   path: "/contact",
 });
 
-const next = [
-  { title: "We read your brief", body: "Every enquiry is read by the people who would work on it." },
-  { title: "We get in touch", body: "We follow up to ask questions and understand what success looks like for you." },
-  { title: "We propose a plan", body: "You receive a suggested approach, timeline and cost to review before anything is agreed." },
-];
-
 export default async function ContactPage() {
-  const { settings, services } = await getContent();
+  const { settings, services, pages } = await getContent();
   const { email, phone, whatsapp, whatsappMessage } = settings.contact;
+  const copy = pages.contact;
+  const direct = [
+    email ? { label: "Email", value: email, href: `mailto:${email}` } : null,
+    phone ? { label: "Call", value: phone, href: `tel:${phone.replace(/\s+/g, "")}` } : null,
+    whatsapp ? { label: "WhatsApp", value: "Chat with us", href: `https://wa.me/${whatsapp}?text=${encodeURIComponent(whatsappMessage)}`, external: true } : null,
+  ].filter(Boolean) as { label: string; value: string; href: string; external?: boolean }[];
+
   return (
-    <section className="bg-paper">
-      <div className="shell grid gap-16 pb-24 pt-32 md:pb-36 md:pt-44 lg:grid-cols-12 lg:gap-8">
-        <div className="lg:col-span-5">
-          <div className="lg:sticky lg:top-32">
-            <Breadcrumbs items={[{ name: "Contact", path: "/contact" }]} className="mb-10 text-mute-2" />
-            <h1 className="type-display">Start a project</h1>
-            <p className="type-lead mt-8 max-w-[40ch] text-ink/75">
-              Whether you have a detailed brief or just an idea, tell us what you want to build. The more context you
-              share, the more useful our first conversation will be.
-            </p>
+    <>
+      <DarkHero title={copy.title} crumbs={[{ name: "Contact", path: "/contact" }]} intro={copy.intro ? <p>{copy.intro}</p> : undefined}>
+        {direct.length ? (
+          <ul className="mt-8 flex flex-wrap gap-2">
+            {direct.map((d) => (
+              <li key={d.label}>
+                <a
+                  href={d.href}
+                  {...(d.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  className="inline-flex h-11 items-center gap-2 rounded-full bg-white/[0.07] px-4 text-sm text-white ring-1 ring-white/10 transition-colors hover:bg-white hover:text-ink"
+                >
+                  <span className="text-white/50">{d.label}</span> {d.value}
+                  {d.external ? <span className="sr-only"> (opens in a new tab)</span> : null}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </DarkHero>
 
-            <h2 className="type-h3 mt-14">What happens next</h2>
-            <ol className="mt-6 space-y-6">
-              {next.map((n, i) => (
-                <li key={n.title} className="flex gap-5">
-                  <span className="font-display text-sm tabular-nums text-mute-2">{String(i + 1).padStart(2, "0")}</span>
-                  <div>
-                    <h3 className="font-display text-lg font-semibold">{n.title}</h3>
-                    <p className="mt-1 leading-relaxed text-mute-2">{n.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-
-            {email || phone ? (
-              <div className="mt-14 border-t border-ink/15 pt-8">
-                <h2 className="type-h3">Prefer to write directly?</h2>
-                <ul className="mt-4 space-y-2">
-                  {email ? (
-                    <li>
-                      <a href={`mailto:${email}`} className="font-display text-xl underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink">
-                        {email}
-                      </a>
-                    </li>
-                  ) : null}
-                  {phone ? (
-                    <li>
-                      <a href={`tel:${phone.replace(/\s+/g, "")}`} className="font-display text-xl underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink">
-                        {phone}
-                      </a>
-                    </li>
-                  ) : null}
-                  {whatsapp ? (
-                    <li>
-                      <a
-                        href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(whatsappMessage)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-display text-xl underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink"
-                      >
-                        Chat on WhatsApp<span className="sr-only"> (opens in a new tab)</span>
-                      </a>
-                    </li>
-                  ) : null}
-                </ul>
+      <section className="bg-paper-2">
+        <div className="shell grid gap-4 py-10 md:py-16 lg:grid-cols-12">
+          <div className="lg:col-span-7 xl:col-span-8">
+            <div className="rounded-[2rem] bg-white p-6 ring-1 ring-ink/8 sm:p-8 md:p-10">
+              <h2 className="type-h2">Tell us about the project</h2>
+              <div className="mt-8">
+                <ContactForm services={services.map((s) => ({ slug: s.slug, title: s.title }))} email={email} />
               </div>
-            ) : null}
+            </div>
           </div>
-        </div>
 
-        <div className="lg:col-span-7 lg:col-start-6 xl:col-span-6 xl:col-start-7">
-          <h2 className="sr-only">Project enquiry form</h2>
-          <ContactForm services={services.map((s) => ({ slug: s.slug, title: s.title }))} email={email} />
+          {copy.steps.length ? (
+            <aside className="lg:col-span-5 xl:col-span-4">
+              <div className="rounded-[2rem] bg-ink p-7 text-white lg:sticky lg:top-24 md:p-8">
+                <h2 className="type-h3">What happens next</h2>
+                <ol className="mt-6 space-y-6">
+                  {copy.steps.map((n, i) => (
+                    <li key={`${i}-${n.title}`} className="flex gap-4">
+                      <span className="font-display text-sm tabular-nums text-accent">{String(i + 1).padStart(2, "0")}</span>
+                      <div>
+                        <h3 className="font-display text-lg font-semibold">{n.title}</h3>
+                        <p className="mt-1 leading-relaxed text-white/65">{n.body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </aside>
+          ) : null}
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

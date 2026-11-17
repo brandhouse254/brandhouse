@@ -112,11 +112,42 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <div className="min-w-0 space-y-5">
           <Panel title="Details">
             <div className="space-y-4 p-5 text-sm">
-              <dl className="space-y-2">
-                {client.email ? <dd className="break-all">{client.email}</dd> : null}
-                {client.phone ? <dd>{client.phone}</dd> : null}
-                {client.address ? <dd className="text-mute-2">{client.address}</dd> : null}
-                {client.kraPin ? <dd>KRA PIN {client.kraPin}</dd> : null}
+              {client.details.needs ? (
+                <div className="rounded-xl bg-accent/10 p-3 ring-1 ring-accent/20">
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-accent-deep">What they want</p>
+                  <p className="mt-1 whitespace-pre-wrap leading-relaxed">{client.details.needs}</p>
+                </div>
+              ) : null}
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+                {(
+                  [
+                    ["Role", client.details.role],
+                    ["Industry", client.details.industry],
+                    ["Email", client.email],
+                    ["Phone", client.phone],
+                    ["Other phone", client.details.altPhone],
+                    ["Location", client.details.location],
+                    ["Website", client.details.website],
+                    ["Social", client.details.social],
+                    ["Address", client.address],
+                    ["Found us via", client.details.source],
+                  ] as const
+                )
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="text-mute-2">{k}</dt>
+                      <dd className="break-words">
+                        {k === "Website" && /^https?:\/\//i.test(v) ? (
+                          <a href={v} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+                            {v.replace(/^https?:\/\//i, "")}
+                          </a>
+                        ) : (
+                          v
+                        )}
+                      </dd>
+                    </div>
+                  ))}
               </dl>
               <ContactLinks name={client.name} email={client.email} phone={client.phone} subject="Brand House" />
               {client.notes ? <p className="whitespace-pre-wrap rounded-xl bg-paper/60 p-3 leading-relaxed ring-1 ring-ink/8">{client.notes}</p> : null}

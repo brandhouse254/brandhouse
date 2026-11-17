@@ -63,21 +63,22 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-[70] flex justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close" className="absolute inset-0 bg-[#000]/65 backdrop-blur-sm" onClick={onClose} />
       <div
         className={cn(
-          "relative flex max-h-[92svh] w-full flex-col rounded-t-3xl bg-white ring-1 ring-ink/10 shadow-2xl sm:rounded-3xl",
+          // Full screen on phones so the on-screen keyboard can't push the form around; a centred card from sm up.
+          "relative flex h-[100dvh] w-full flex-col bg-white shadow-2xl ring-1 ring-ink/10 sm:h-auto sm:max-h-[90dvh] sm:rounded-3xl",
           wide ? "sm:max-w-2xl" : "sm:max-w-lg",
         )}
       >
-        <div className="flex items-center justify-between border-b border-ink/8 px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-ink/8 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:pt-4">
           <h2 className="font-display text-lg font-semibold">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="-mr-2 rounded-full p-2 text-ink/60 hover:bg-ink/6 hover:text-ink">
             <X className="size-5" />
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
     </div>
   );

@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ReceiptText } from "lucide-react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getInvoice, todayKE } from "@/lib/biz/data";
-import { invoiceStatuses, kes, labelOf, paymentMethods } from "@/lib/biz/types";
+import { getBusinessSettings, getClient, getInvoice, todayKE } from "@/lib/biz/data";
+import { recipientName, sheetForDocument } from "@/lib/biz/sheet";
+import { docWords, invoiceStatuses, kes, labelOf, paymentMethods } from "@/lib/biz/types";
+import { DocumentSheet } from "@/components/docs/sheet";
+import { FitSheet } from "@/components/admin/biz/doc-editor";
 import { docTone, dueLabel, fmtDate, PageHeader, Panel, Pill, Stat } from "@/components/admin/biz/bits";
 import { DocActions, PaymentDelete, PaymentForm, ShareButtons } from "@/components/admin/biz/finance";
 
@@ -13,6 +17,9 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
   const { id } = await params;
   const doc = await getInvoice(id);
   if (!doc) notFound();
+  const [biz, client] = await Promise.all([getBusinessSettings(), doc.clientId ? getClient(doc.clientId) : null]);
+  const words = docWords[doc.kind];
+  const who = recipientName(doc);
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "brandhouse.co.ke";
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -24,7 +31,7 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
   return (
     <>
       <PageHeader
-        back={{ href: `/admin/finance/${doc.kind === "quote" ? "quotes" : "invoices"}`, label: doc.kind === "quote" ? "Quotes" : "Invoices" }}
+        back={{ href: `/admin/finance/${words.plural}`, label: words.plural.charAt(0).toUpperCase() + words.plural.slice(1) }}
         title={
           <span className="inline-flex flex-wrap items-center gap-3">
             {doc.number}
@@ -34,16 +41,16 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
         }
         description={
           <>
-            {doc.kind === "quote" ? "Quote" : "Invoice"} for{" "}
+            {words.title} for{" "}
             {doc.clientId ? (
               <Link href={`/admin/clients/${doc.clientId}`} className="underline decoration-ink/25 underline-offset-4">
-                {doc.clientName}
+                {who}
               </Link>
             ) : (
-              "no client"
+              who || "no one yet"
             )}{" "}
             · {fmtDate(doc.issueOn)}
-            {doc.dueOn ? ` · ${doc.kind === "quote" ? "valid until" : "due"} ${fmtDate(doc.dueOn)}` : ""}
+            {doc.dueOn && doc.kind !== "receipt" ? ` · ${doc.kind === "quote" ? "valid until" : "due"} ${fmtDate(doc.dueOn)}` : ""}
           </>
         }
       />
@@ -59,62 +66,34 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
               <Stat label="Balance" value={kes(t.balance)} tone={t.balance > 0.004 && doc.status !== "void" ? "red" : undefined} />
             </>
           ) : null}
-          <Stat label="Lines" value={doc.items.length} note={doc.convertedFrom ? "From an accepted quote" : undefined} />
+          {doc.kind !== "invoice" ? <Stat label="Lines" value={doc.items.length} note={doc.convertedFrom ? "From an accepted quote" : undefined} /> : null}
         </dl>
 
-        <Panel title="Send it to the client">
+        <Panel title={`Send the ${words.word}`}>
           <div className="space-y-3 p-5">
             <p className="text-sm text-mute-2">
-              The link opens a clean, printable {doc.kind} with your payment details. Anyone with the link can see it, so share it only with the client.
+              The link opens the branded {words.word}, ready to print or save as a PDF. Anyone with the link can see it, so share it only with the client.
             </p>
-            <ShareButtons url={shareUrl} number={doc.number} kind={doc.kind} clientName={doc.clientName ?? ""} total={kes(t.total)} />
+            <ShareButtons url={shareUrl} number={doc.number} kind={doc.kind} clientName={doc.billTo?.name || doc.clientName || ""} total={kes(t.total)} />
           </div>
         </Panel>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-          <Panel title="Items">
-            <ul className="divide-y divide-ink/8">
-              {doc.items.map((it, i) => (
-                <li key={it.id ?? i} className="flex items-start justify-between gap-4 px-5 py-3">
-                  <span className="min-w-0">
-                    <span className="block break-words">{it.description}</span>
-                    <span className="text-xs text-mute-2">
-                      {it.quantity} × {kes(it.unitPrice)}
-                    </span>
-                  </span>
-                  <span className="shrink-0 tabular-nums">{kes(it.quantity * it.unitPrice)}</span>
-                </li>
-              ))}
-            </ul>
-            <dl className="space-y-1 border-t border-ink/8 px-5 py-4 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-mute-2">Subtotal</dt>
-                <dd>{kes(t.subtotal)}</dd>
+          <Panel title="Preview">
+            <div className="bg-[#e9e6e0] p-3 sm:p-4">
+              <div className="overflow-hidden rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.4)]">
+                <FitSheet>
+                  <DocumentSheet data={sheetForDocument(doc, biz, client)} biz={biz} />
+                </FitSheet>
               </div>
-              {t.discount ? (
-                <div className="flex justify-between">
-                  <dt className="text-mute-2">Discount</dt>
-                  <dd>−{kes(t.discount)}</dd>
-                </div>
-              ) : null}
-              {t.vat ? (
-                <div className="flex justify-between">
-                  <dt className="text-mute-2">VAT {doc.vatRate}%{doc.vatInclusive ? " (included)" : ""}</dt>
-                  <dd>{kes(t.vat)}</dd>
-                </div>
-              ) : null}
-              <div className="flex justify-between font-semibold">
-                <dt>Total</dt>
-                <dd>{kes(t.total)}</dd>
-              </div>
-            </dl>
+            </div>
           </Panel>
 
           {doc.kind === "invoice" ? (
             <Panel title="Payments" action={doc.status !== "void" && t.balance > 0.004 ? <PaymentForm invoiceId={doc.id} balance={t.balance} today={today} /> : null}>
               {doc.payments.length ? (
                 <ul className="divide-y divide-ink/8">
-                  {doc.payments.map((p) => (
+                  {doc.payments.map((p, i) => (
                     <li key={p.id} className="flex items-center gap-3 px-5 py-3">
                       <div className="min-w-0 flex-1">
                         <p className="font-medium tabular-nums">{kes(p.amount)}</p>
@@ -124,6 +103,14 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
                           {p.note ? ` · ${p.note}` : ""}
                         </p>
                       </div>
+                      <a
+                        href={`/i/${doc.shareToken}?r=${p.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white px-3 text-sm font-medium ring-1 ring-ink/15 hover:ring-ink/30"
+                      >
+                        <ReceiptText className="size-4" /> {p.receiptNo || `Receipt ${i + 1}`}
+                      </a>
                       <PaymentDelete id={p.id} />
                     </li>
                   ))}
@@ -135,14 +122,6 @@ export default async function DocPage({ params }: { params: Promise<{ id: string
           ) : null}
         </div>
 
-        {doc.notes || doc.terms ? (
-          <Panel title="Notes & terms">
-            <div className="space-y-3 whitespace-pre-wrap p-5 text-sm leading-relaxed">
-              {doc.notes ? <p>{doc.notes}</p> : null}
-              {doc.terms ? <p className="text-mute-2">{doc.terms}</p> : null}
-            </div>
-          </Panel>
-        ) : null}
       </div>
     </>
   );

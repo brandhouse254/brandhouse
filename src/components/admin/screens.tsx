@@ -6,11 +6,9 @@ import {
   Check,
   Copy,
   Film,
-  History as HistoryIcon,
   ImageIcon,
   KeyRound,
   Loader2,
-  RotateCcw,
   Shield,
   Trash2,
   UploadCloud,
@@ -19,15 +17,12 @@ import {
 import {
   addTeamMember,
   deleteMedia,
-  getHistory,
   listMedia,
   removeTeamMember,
   resetTeamPassword,
-  restoreVersion,
   updateTeamMember,
   type MediaItem,
 } from "@/lib/admin/actions";
-import type { HistoryEntry } from "@/lib/cms/store";
 import type { PublicUser, Role } from "@/lib/auth/users";
 import { cn } from "@/lib/cn";
 import { useUploader } from "./media";
@@ -187,78 +182,6 @@ export function MediaScreen() {
           </li>
         ))}
       </ul>
-    </>
-  );
-}
-
-/* ───────────── Version history ───────────── */
-
-export function HistoryScreen({ isOwner }: { isOwner: boolean }) {
-  const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const router = useRouter();
-
-  useEffect(() => {
-    void getHistory().then((r) => (r.ok ? setEntries(r.entries) : setError(r.error)));
-  }, []);
-
-  return (
-    <>
-      <header className="py-6">
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">Version history</h1>
-        <p className="mt-0.5 max-w-2xl text-sm text-mute-2">
-          Every time someone publishes a change, a copy of the whole site&apos;s content is kept here (the latest 40).
-          {isOwner ? " Restore any version to undo mistakes, including deleted projects." : " Ask an owner to restore a version."}
-        </p>
-      </header>
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
-      {!entries && !error ? (
-        <p className="flex items-center gap-2 text-sm text-mute-2">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </p>
-      ) : null}
-      {entries && entries.length === 0 ? (
-        <EmptyState icon={<HistoryIcon className="size-6" />} title="No saved versions yet" body="Versions appear here after the first change is published." />
-      ) : null}
-      {entries?.length ? (
-        <ol className="relative space-y-2 border-l border-ink/15 pl-6">
-          {entries.map((e, i) => (
-            <li key={e.url} className="relative rounded-2xl bg-white px-4 py-3 ring-1 ring-ink/10">
-              <span className={cn("absolute -left-[1.85rem] top-5 size-3 rounded-full ring-4 ring-paper", i === 0 ? "bg-accent" : "bg-ink/25")} />
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">
-                    {new Date(e.savedAt).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" })}
-                    {i === 0 ? <Badge tone="green">Live now</Badge> : null}
-                  </p>
-                  <p className="text-xs text-mute-2">
-                    by {e.editor || "unknown"} · {timeAgo(e.savedAt)}
-                  </p>
-                </div>
-                {isOwner && i > 0 ? (
-                  <Button
-                    size="sm"
-                    disabled={busy !== null}
-                    onClick={async () => {
-                      if (!confirm("Restore this version? The whole site's content goes back to how it was at this point. The current version stays in history.")) return;
-                      setBusy(e.url);
-                      const r = await restoreVersion(e.url);
-                      setBusy(null);
-                      if (!r.ok) return alert(r.error);
-                      const fresh = await getHistory();
-                      if (fresh.ok) setEntries(fresh.entries);
-                      router.refresh();
-                    }}
-                  >
-                    {busy === e.url ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />} Restore
-                  </Button>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ol>
-      ) : null}
     </>
   );
 }

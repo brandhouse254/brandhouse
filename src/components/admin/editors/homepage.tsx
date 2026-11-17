@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { DifferenceContent, HeroContent, IntroContent } from "@/lib/cms/types";
+import type { DifferenceContent, HeroContent, IntroContent, ReelFrame } from "@/lib/cms/types";
 import { cn } from "@/lib/cn";
 import { EditorBar, useSectionEditor } from "../editor";
-import { ImageField, VideoField } from "../media";
-import { Card, Grid, Repeater, TextArea, TextField } from "../ui";
+import { ImageField } from "../media";
+import { Card, Grid, Repeater, StringList, TextArea, TextField } from "../ui";
 
 type Tab = "hero" | "intro" | "difference";
 
@@ -17,7 +17,7 @@ export function HomepageEditor({ hero, intro, difference }: { hero: HeroContent;
 
   const tabs: { id: Tab; label: string; dirty: boolean }[] = [
     { id: "hero", label: "Hero", dirty: heroEd.dirty },
-    { id: "intro", label: "Introduction", dirty: introEd.dirty },
+    { id: "intro", label: "More than creative", dirty: introEd.dirty },
     { id: "difference", label: "Why Brand House", dirty: diffEd.dirty },
   ];
 
@@ -50,12 +50,12 @@ export function HomepageEditor({ hero, intro, difference }: { hero: HeroContent;
         <HeroForm ed={heroEd} />
       </div>
       <div hidden={tab !== "intro"}>
-        <EditorBar title="Homepage" description="The section right after the hero." editor={introEd} viewHref="/#intro-title" />
+        <EditorBar title="Homepage" description="The photo cards after the featured work." editor={introEd} viewHref="/#intro-title" />
         {tabBar}
         <IntroForm ed={introEd} />
       </div>
       <div hidden={tab !== "difference"}>
-        <EditorBar title="Homepage" description="The dark section explaining what makes Brand House different." editor={diffEd} viewHref="/#difference-title" />
+        <EditorBar title="Homepage" description="The section explaining what makes Brand House different." editor={diffEd} viewHref="/#diff-title" />
         {tabBar}
         <DifferenceForm ed={diffEd} />
       </div>
@@ -85,51 +85,73 @@ function HeroForm({ ed }: { ed: ReturnType<typeof useSectionEditor<HeroContent>>
           <TextField label="Second button link" value={v.secondaryCta.href} onChange={(href) => set({ secondaryCta: { ...v.secondaryCta, href } })} />
         </Grid>
       </Card>
-      <Card title="Background image & video" description="The image shows straight away. If you add a video, it fades in over the image and loops silently. Visitors who prefer less motion or are saving data keep the still image.">
-        <ImageField label="Background image" value={v.image} onChange={(image) => set({ image })} hint="Landscape, at least 2400px wide. This is also the video's first frame." />
-        <VideoField
-          label="Background video (optional)"
-          value={v.video?.src ?? ""}
-          onChange={(src, type) => set({ video: src ? { src, type: type === "video/webm" ? "video/webm" : "video/mp4" } : null })}
-          hint="MP4 works everywhere. Keep it short (15–30 seconds), without sound, ideally under 15 MB."
+      <Card
+        title="Moving reel"
+        description="Photos that drift past beside the headline, in three columns. Use at least six; nine or twelve looks best. Portrait photos work best."
+      >
+        <Repeater
+          items={v.reel}
+          onChange={(reel) => set({ reel })}
+          create={(): ReelFrame => ({ src: "", alt: "", label: "" })}
+          itemLabel={(f, i) => f.label || f.alt.slice(0, 50) || `Photo ${i + 1}`}
+          addLabel="Add a photo"
+          max={18}
+          render={(f, update) => (
+            <>
+              <ImageField label="Photo" value={f} onChange={(img) => update({ src: img.src, alt: img.alt })} aspect="aspect-[3/4]" />
+              <TextField label="Label on the photo" value={f.label} onChange={(label) => update({ label })} max={40} hint="A couple of words, e.g. Product shoot. Leave empty for no label." />
+            </>
+          )}
         />
-        <TextField label="Timecode in the corner" value={v.timecode} onChange={(timecode) => set({ timecode })} max={20} hint="A decorative film timecode, top right. Leave empty to hide it." />
+      </Card>
+      <Card title="Moving words" description="The orange bar on the reel reads “We make …” and cycles through these. The ticker runs under the hero.">
+        <StringList label="“We make …” words" value={v.making} onChange={(making) => set({ making })} addLabel="Add a word" max={8} placeholder="e.g. brand films" />
+        <StringList
+          label="Ticker"
+          value={v.ticker}
+          onChange={(ticker) => set({ ticker })}
+          addLabel="Add an item"
+          max={16}
+          hint="Leave empty to show your service names automatically."
+        />
       </Card>
     </div>
   );
 }
 
 function HeroPreview({ hero }: { hero: HeroContent }) {
+  const thumbs = hero.reel.slice(0, 6);
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#0b0b0c] text-[#fff] shadow-[0_10px_40px_-12px_rgba(17,17,17,0.45)]">
-      <div className="relative aspect-[16/8] min-h-64">
-        {hero.video?.src ? (
-          <video key={hero.video.src} src={hero.video.src} poster={hero.image.src} autoPlay muted loop playsInline className="absolute inset-0 size-full object-cover" />
-        ) : hero.image.src ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={hero.image.src} alt="" className="absolute inset-0 size-full object-cover" />
-        ) : null}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.45)_0%,rgba(17,17,17,0.1)_35%,rgba(17,17,17,0.85)_100%)]" />
-        <span className="absolute left-4 top-4 rounded-full bg-[#fff]/15 px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.12em] backdrop-blur">Live preview</span>
-        {hero.timecode ? <span className="absolute right-5 top-4 font-display text-xs tabular-nums text-[#fff]/60">{hero.timecode}</span> : null}
-        <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-          {hero.eyebrow ? <p className="font-display text-sm text-[#fff]/80">{hero.eyebrow}</p> : null}
-          <p className="mt-2 font-display text-[clamp(1.8rem,4.2vw,3.4rem)] font-semibold leading-[0.95] tracking-[-0.04em]">
+    <div className="relative overflow-hidden rounded-2xl bg-[#0b0b0c] p-6 text-[#fff] shadow-[0_10px_40px_-12px_rgba(17,17,17,0.45)] sm:p-8">
+      <span className="rounded-full bg-[#fff]/15 px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.12em]">Live preview</span>
+      <div className="mt-5 grid items-center gap-6 sm:grid-cols-[minmax(0,1fr)_12rem]">
+        <div>
+          {hero.eyebrow ? <p className="font-display text-sm text-[#fff]/70">{hero.eyebrow}</p> : null}
+          <p className="mt-2 font-display text-[clamp(1.8rem,4vw,3.2rem)] font-bold leading-[0.92] tracking-[-0.04em]">
             {hero.line1}
             {hero.line2 ? (
               <>
                 <br />
-                {hero.line2}
+                <span className="text-accent">{hero.line2}</span>
               </>
             ) : null}
           </p>
-          <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-            <p className="max-w-md text-sm text-[#fff]/75">{hero.lead}</p>
-            <div className="flex gap-2">
-              <span className="rounded-full bg-accent px-4 py-2 text-xs font-medium text-[#111]">{hero.primaryCta.label}</span>
-              <span className="rounded-full px-4 py-2 text-xs font-medium ring-1 ring-[#fff]/40">{hero.secondaryCta.label}</span>
-            </div>
+          <p className="mt-4 max-w-md text-sm text-[#fff]/70">{hero.lead}</p>
+          <div className="mt-4 flex gap-2">
+            <span className="rounded-full bg-accent px-4 py-2 text-xs font-medium text-[#111]">{hero.primaryCta.label}</span>
+            <span className="rounded-full px-4 py-2 text-xs font-medium ring-1 ring-[#fff]/40">{hero.secondaryCta.label}</span>
           </div>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
+          {thumbs.map((f, i) =>
+            f.src ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={f.src} alt="" className="aspect-[3/4] w-full rounded-md object-cover" />
+            ) : (
+              <span key={i} className="aspect-[3/4] rounded-md bg-[#fff]/10" />
+            ),
+          )}
+          <span className="col-span-3 mt-1 rounded-md bg-accent px-2 py-1.5 text-[0.7rem] font-semibold text-[#111]">We make {hero.making[0] ?? "…"}</span>
         </div>
       </div>
     </div>
@@ -145,11 +167,11 @@ function IntroForm({ ed }: { ed: ReturnType<typeof useSectionEditor<IntroContent
         <TextField label="Heading" value={v.title} onChange={(title) => set({ title })} max={160} />
         <TextArea label="Statement" value={v.statement} onChange={(statement) => set({ statement })} max={600} />
       </Card>
-      <Card title="Three key facts" description="Short points shown in columns under the statement.">
+      <Card title="Photo cards" description="Short points shown as photo cards under the statement (swipeable on phones). Three looks best.">
         <Repeater
           items={v.facts}
           onChange={(facts) => set({ facts })}
-          create={() => ({ title: "", body: "" })}
+          create={() => ({ title: "", body: "", image: null })}
           itemLabel={(f) => f.title}
           addLabel="Add a fact"
           max={6}
@@ -157,6 +179,12 @@ function IntroForm({ ed }: { ed: ReturnType<typeof useSectionEditor<IntroContent
             <>
               <TextField label="Title" value={f.title} onChange={(title) => update({ title })} max={160} />
               <TextArea label="Text" value={f.body} onChange={(body) => update({ body })} max={600} />
+              <ImageField
+                label="Photo"
+                value={f.image ?? { src: "", alt: "" }}
+                onChange={(img) => update({ image: img.src ? { src: img.src, alt: img.alt } : null })}
+                aspect="aspect-[4/5]"
+              />
             </>
           )}
         />
@@ -173,6 +201,7 @@ function DifferenceForm({ ed }: { ed: ReturnType<typeof useSectionEditor<Differe
       <Card title="Section heading">
         <TextField label="Heading" value={v.title} onChange={(title) => set({ title })} max={160} />
         <TextArea label="Intro text" value={v.lead} onChange={(lead) => set({ lead })} max={600} />
+        <ImageField label="Photo under the heading" value={v.image} onChange={(image) => set({ image })} aspect="aspect-[4/3]" />
       </Card>
       <Card title="Points">
         <Repeater

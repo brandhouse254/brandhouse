@@ -3,12 +3,12 @@
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Briefcase, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
-import { workCategories, workCategoryLabels, type Project, type ProjectImage } from "@/lib/cms/types";
+import { ArrowDown, ArrowUp, Briefcase, Eye, EyeOff, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { projectFrameLabels, projectFrames, workCategories, workCategoryLabels, type Project, type ProjectFrame, type ProjectImage } from "@/lib/cms/types";
 import { youtubeId, youtubeThumbnail } from "@/lib/cms/public";
 import { EditorBar, useSectionEditor } from "../editor";
 import { ImageField, VideoField } from "../media";
-import { Badge, Button, Card, Chips, EmptyState, Grid, IconButton, Repeater, StringList, TextArea, TextField, Toggle } from "../ui";
+import { Badge, Button, Card, Chips, EmptyState, Grid, IconButton, Repeater, Select, StringList, TextArea, TextField, Toggle } from "../ui";
 
 export function slugify(text: string) {
   return text
@@ -41,8 +41,20 @@ function blankProject(): Project {
     video: null,
     outcome: null,
     year: String(new Date().getFullYear()),
+    featured: false,
+    frame: "photo",
+    tagline: "",
+    link: null,
   };
 }
+
+const frameHints: Record<ProjectFrame, string> = {
+  photo: "The cover photo, full size.",
+  ad: "The cover with a small social ad card on top, using the mock-up line.",
+  phone: "The cover inside a phone on an orange card, like an Instagram story.",
+  browser: "A website mock-up in a browser window: the mock-up line as the headline, the cover beside it.",
+  film: "The cover with a play button. Best when the project has a video.",
+};
 
 /* ───────────── List ───────────── */
 
@@ -59,6 +71,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
     ed.setValue(next);
   };
 
+  const featuredCount = items.filter((p) => p.featured && p.published).length;
   const counts = useMemo(
     () => ({
       all: items.length,
@@ -79,7 +92,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
     <>
       <EditorBar
         title="Portfolio"
-        description="Case studies on /work. The first four published projects are featured on the homepage."
+        description="Everything on /work. Star up to six projects to feature them on the homepage, in this order (six fills the full showcase)."
         editor={ed}
         viewHref="/work"
         extra={
@@ -89,9 +102,17 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
         }
       />
 
+      <p className="mb-4 flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm ring-1 ring-ink/10">
+        <Star className="size-4 shrink-0 fill-accent text-accent" aria-hidden />
+        <span>
+          <strong className="font-semibold">{featuredCount} of 6</strong> featured on the homepage.
+          {featuredCount > 6 ? " Only the first six (top of this list) are shown." : featuredCount === 0 ? " None starred, so the first six published projects are shown." : ""}
+        </span>
+      </p>
+
       {!showSamples && counts.sample > 0 ? (
         <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-600/15">
-          Sample projects are switched off in Contact &amp; social, so they&apos;re hidden on the site even if published.
+          Showcase pieces are switched off in Contact &amp; social, so they&apos;re hidden on the site even if published.
         </p>
       ) : null}
 
@@ -103,7 +124,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
             onClick={() => setFilter(f)}
             className={`rounded-full px-3.5 py-1.5 text-sm ring-1 ring-inset ${filter === f ? "bg-ink text-white ring-ink" : "bg-white text-ink/70 ring-ink/15 hover:ring-ink/30"}`}
           >
-            {{ all: "All", published: "Live client work", draft: "Drafts", sample: "Samples" }[f]} <span className="opacity-60">{counts[f]}</span>
+            {{ all: "All", published: "Client work", draft: "Drafts", sample: "Showcase" }[f]} <span className="opacity-60">{counts[f]}</span>
           </button>
         ))}
       </div>
@@ -126,13 +147,20 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
                     {p.title || "Untitled project"}
                   </Link>
                   {p.published ? <Badge tone="green">Published</Badge> : <Badge tone="amber">Draft</Badge>}
-                  {p.isSample ? <Badge tone="orange">Sample</Badge> : null}
+                  {p.featured ? <Badge tone="orange">Featured</Badge> : null}
+                  {p.isSample ? <Badge>Showcase</Badge> : null}
                 </div>
                 <p className="mt-1 truncate text-sm text-mute-2">
                   {[p.client, p.industry, p.categories.map((c) => workCategoryLabels[c]).join(", ")].filter(Boolean).join(" · ")}
                 </p>
               </div>
               <div className="flex shrink-0 items-center">
+                <IconButton
+                  label={p.featured ? "Remove from homepage" : "Feature on homepage"}
+                  onClick={() => ed.setValue(items.map((x, j) => (j === i ? { ...x, featured: !x.featured } : x)))}
+                >
+                  <Star className={p.featured ? "size-4 fill-accent text-accent" : "size-4"} />
+                </IconButton>
                 <IconButton label="Move up" disabled={i === 0} onClick={() => moveItem(i, i - 1)}>
                   <ArrowUp className="size-4" />
                 </IconButton>
@@ -152,7 +180,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
                   label="Delete"
                   className="hover:text-red-600"
                   onClick={() => {
-                    if (confirm(`Delete "${p.title}"? You can undo this from Version history.`)) ed.setValue(items.filter((_, j) => j !== i));
+                    if (confirm(`Delete "${p.title}"?`)) ed.setValue(items.filter((_, j) => j !== i));
                   }}
                 >
                   <Trash2 className="size-4" />
@@ -193,7 +221,7 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
   const set = (patch: Partial<Project>) => ed.setValue(ed.value.map((x, i) => (i === index ? { ...x, ...patch } : x)));
 
   const remove = async () => {
-    if (!confirm(`Delete "${p.title || "this project"}"? You can undo this from Version history.`)) return;
+    if (!confirm(`Delete "${p.title || "this project"}"?`)) return;
     if (isNew) return router.push("/admin/work");
     deleting.current = true;
     const remaining = ed.value.filter((_, i) => i !== index);
@@ -261,8 +289,42 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
             />
           </Card>
 
-          <Card title="Cover image" description="Shown on project cards and behind the case-study title.">
-            <ImageField label="Cover" value={p.cover} onChange={(cover) => set({ cover })} aspect="aspect-[4/3]" />
+          <Card title="Cover & presentation" description="The cover shows on project cards and at the top of the project page. Choose how it is presented.">
+            <ImageField label="Cover" value={p.cover} onChange={(cover) => set({ cover })} aspect="aspect-[4/5]" hint="Portrait photos (4:5) fill the cards best." />
+            <Select
+              label="Presentation"
+              value={p.frame}
+              onChange={(frame) => set({ frame })}
+              options={projectFrames.map((f) => ({ value: f, label: projectFrameLabels[f] }))}
+              hint={frameHints[p.frame]}
+            />
+            {p.frame === "ad" || p.frame === "browser" ? (
+              <TextField
+                label="Mock-up line"
+                value={p.tagline}
+                onChange={(tagline) => set({ tagline })}
+                max={80}
+                hint={p.frame === "ad" ? "The ad text, e.g. The new drop lands Friday." : "The website headline, e.g. Made in Nairobi. Worn everywhere."}
+              />
+            ) : null}
+          </Card>
+
+          <Card title="Link (optional)" description="A button on the project page: the live website, a YouTube video, an Instagram post, a press article.">
+            <Grid>
+              <TextField
+                label="Button text"
+                value={p.link?.label ?? ""}
+                onChange={(label) => set({ link: label || p.link?.href ? { label, href: p.link?.href ?? "" } : null })}
+                max={40}
+                placeholder="e.g. Visit the website"
+              />
+              <TextField
+                label="Link"
+                value={p.link?.href ?? ""}
+                onChange={(href) => set({ link: href || p.link?.label ? { label: p.link?.label ?? "", href } : null })}
+                placeholder="https://"
+              />
+            </Grid>
           </Card>
 
           <Card title="The story">
@@ -327,10 +389,16 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
               hint={p.published ? "Visible on the website." : "Draft: only visible here in the admin."}
             />
             <Toggle
-              label="Sample concept"
+              label="Featured on the homepage"
+              checked={p.featured}
+              onChange={(featured) => set({ featured })}
+              hint="Shown in the homepage showcase. Up to six, in the order of the project list."
+            />
+            <Toggle
+              label="Showcase piece (not client work)"
               checked={p.isSample}
               onChange={(isSample) => set({ isSample })}
-              hint="Marks illustrative work for a fictional brand. Real client work should have this off."
+              hint="For pieces that show what we make rather than a named client's project. Real client work should have this off."
             />
           </Card>
           <div className="rounded-2xl bg-white p-4 text-sm text-mute-2 ring-1 ring-ink/10">

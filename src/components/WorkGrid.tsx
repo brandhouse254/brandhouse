@@ -5,7 +5,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import type { Project } from "@/lib/cms/types";
 import { workCategoryLabels, type WorkCategory } from "@/lib/cms/types";
 import { cn } from "@/lib/cn";
-import { ProjectCard } from "./ProjectCard";
+import { ShowcaseCard } from "./site/showcase";
 
 type Filter = WorkCategory | "all";
 const filters: Filter[] = ["all", "branding", "film", "web", "marketing"];
@@ -55,8 +55,8 @@ export function WorkGrid({ projects }: { projects: Project[] }) {
               aria-controls="work-grid"
               onClick={() => choose(f)}
               className={cn(
-                "inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-display text-[0.95rem] font-medium transition-colors",
-                on ? "border-ink bg-ink text-white" : "border-ink/20 hover:border-ink",
+                "inline-flex min-h-11 items-center gap-2 rounded-full px-4 font-display text-[0.95rem] font-medium ring-1 ring-inset transition-colors",
+                on ? "bg-ink text-white ring-ink" : "bg-white text-ink ring-ink/10 hover:ring-ink/30",
               )}
             >
               {label(f)}
@@ -70,9 +70,9 @@ export function WorkGrid({ projects }: { projects: Project[] }) {
         Showing {visible.length} {visible.length === 1 ? "project" : "projects"} in {label(active)}
       </p>
 
-      <div id="work-grid" aria-describedby={statusId} className="mt-12 md:mt-16">
+      <div id="work-grid" aria-describedby={statusId} className="mt-8 md:mt-10">
         {visible.length === 0 ? (
-          <div className="border border-dashed border-ink/25 px-6 py-16 text-center">
+          <div className="rounded-[1.75rem] border border-dashed border-ink/25 px-6 py-16 text-center">
             <p className="type-h3">No {label(active).toLowerCase()} projects yet.</p>
             <p className="mt-3 text-mute-2">Case studies in this category are on the way. Browse the rest of our work for now.</p>
             <button
@@ -84,9 +84,9 @@ export function WorkGrid({ projects }: { projects: Project[] }) {
             </button>
           </div>
         ) : (
-          <motion.ul layout className="grid gap-x-8 gap-y-16 md:grid-cols-2 md:gap-y-24">
+          <motion.ul layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AnimatePresence mode="popLayout" initial={false}>
-              {visible.map((p, i) => (
+              {visible.map((p) => (
                 <motion.li
                   key={p.slug}
                   layout
@@ -94,13 +94,9 @@ export function WorkGrid({ projects }: { projects: Project[] }) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98 }}
                   transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                  className={cn(i % 2 === 1 && "md:mt-32")}
+                  className="h-[30rem] md:h-[32rem]"
                 >
-                  <ProjectCard
-                    project={p}
-                    headingLevel="h2"
-                    aspect={i % 3 === 0 ? "aspect-[4/5]" : "aspect-[4/3]"}
-                  />
+                  <ShowcaseCard project={p} sizes="(min-width: 1024px) 32vw, (min-width: 640px) 48vw, 100vw" />
                 </motion.li>
               ))}
             </AnimatePresence>

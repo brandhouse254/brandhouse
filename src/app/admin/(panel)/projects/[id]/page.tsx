@@ -102,7 +102,52 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
 
         <div className="min-w-0 space-y-5">
           <Panel title="Brief">
-            <p className="whitespace-pre-wrap p-5 text-sm leading-relaxed text-ink/85">{project.description || <span className="text-mute-2">No brief yet. Use Edit to add one.</span>}</p>
+            <div className="space-y-4 p-5 text-sm">
+              {project.details.services.length ? (
+                <ul className="flex flex-wrap gap-1.5">
+                  {project.details.services.map((s) => (
+                    <li key={s} className="rounded-full bg-ink px-2.5 py-1 text-xs font-medium text-white">
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="whitespace-pre-wrap leading-relaxed text-ink/85">{project.description || <span className="text-mute-2">No brief yet. Use Edit to add one.</span>}</p>
+              {project.details.deliverables ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-mute-2">Deliverables</p>
+                  <p className="mt-1 whitespace-pre-wrap leading-relaxed">{project.details.deliverables}</p>
+                </div>
+              ) : null}
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+                {(
+                  [
+                    ["Priority", project.details.priority === "normal" ? "" : project.details.priority === "high" ? "High" : "Low"],
+                    ["Reminders", project.dueOn ? `${project.details.remindDays} day${project.details.remindDays === 1 ? "" : "s"} before the deadline` : ""],
+                    ["Their contact", [project.details.contactPerson, project.details.contactPhone].filter(Boolean).join(" · ")],
+                    ["Location", project.details.location],
+                  ] as const
+                )
+                  .filter(([, v]) => v)
+                  .map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="text-mute-2">{k}</dt>
+                      <dd className="break-words">{v}</dd>
+                    </div>
+                  ))}
+              </dl>
+              {project.details.assetsLink ? (
+                <a
+                  href={project.details.assetsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-medium ring-1 ring-ink/15 hover:ring-ink/35"
+                >
+                  Open files & assets ↗
+                </a>
+              ) : null}
+              {project.details.notes ? <p className="whitespace-pre-wrap rounded-xl bg-paper/60 p-3 leading-relaxed ring-1 ring-ink/8">{project.details.notes}</p> : null}
+            </div>
           </Panel>
           {isOwner ? (
             <Panel title="Quotes & invoices">

@@ -13,11 +13,8 @@ import { describeIssue, sectionSchemas, type SectionKey } from "@/lib/cms/schema
 import {
   CONTENT_TAG,
   ContentConflictError,
-  listHistory,
   readContent,
-  readHistoryVersion,
   writeContent,
-  type HistoryEntry,
 } from "@/lib/cms/store";
 import { stableStringify } from "@/lib/cms/stable";
 import type { SiteContent } from "@/lib/cms/types";
@@ -204,6 +201,7 @@ const sectionNames: Record<SectionKey, string> = {
   services: "Services",
   projects: "Work & projects",
   testimonials: "Testimonials",
+  pages: "Page text",
 };
 
 /**
@@ -241,32 +239,11 @@ export async function saveSection(
     after(() =>
       notifyTeam(
         "publishes",
-        { title: `${me.name || "A team member"} published a change`, body: `${sectionNames[section]} was updated on the website.`, url: "/admin/history", tag: "publish" },
+        { title: `${me.name || "A team member"} published a change`, body: `${sectionNames[section]} was updated on the website.`, url: "/admin", tag: "publish" },
         { exceptUserId: me.id },
       ),
     );
     return { ok: true, value: parsed.data, savedAt: new Date().toISOString() };
-  } catch (e) {
-    return failure(e);
-  }
-}
-
-export async function getHistory(): Promise<Result<{ entries: HistoryEntry[] }>> {
-  try {
-    await assertUser();
-    return { ok: true, entries: await listHistory() };
-  } catch (e) {
-    return failure(e);
-  }
-}
-
-export async function restoreVersion(url: string): Promise<Result> {
-  try {
-    const me = await assertUser("owner");
-    const version = await readHistoryVersion(url);
-    await writeContent(version, `${me.name || me.email} (restored a previous version)`);
-    refreshSite();
-    return { ok: true };
   } catch (e) {
     return failure(e);
   }

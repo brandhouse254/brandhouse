@@ -1,3 +1,5 @@
+import { photos } from "@/lib/cms/stock";
+
 /**
  * Service divisions. Each entry powers the homepage services section, the
  * /services overview and its own page at /services/[slug].
@@ -80,10 +82,7 @@ export const seedServices: Service[] = [
       "Guidelines, files and launch support, plus a review once the brand is live.",
     ],
     workCategory: "branding",
-    image: {
-      src: "/media/service-brand.jpg",
-      alt: "Brand board for a sample solar brand: the sun-and-horizon logo, business cards, a battery app screen, colour palette, typefaces and a billboard",
-    },
+    image: { ...photos.productOrange },
     meta: {
       title: "Brand Identity & Logo Design in Kenya",
       description:
@@ -145,10 +144,7 @@ export const seedServices: Service[] = [
       "Delivery in every format you need, with notes on how each cut should be used.",
     ],
     workCategory: "film",
-    image: {
-      src: "/media/service-film.jpg",
-      alt: "Abstract placeholder of warm out-of-focus light with an anamorphic lens flare",
-    },
+    image: { ...photos.filmCrew },
     meta: {
       title: "Video Production & Commercials in Kenya",
       description:
@@ -209,10 +205,7 @@ export const seedServices: Service[] = [
       "Launch, monitoring, and recommendations from early visitor data.",
     ],
     workCategory: "web",
-    image: {
-      src: "/media/service-web.jpg",
-      alt: "Website design panels on a dark background: desktop and mobile pages, checkout, site map and performance scores",
-    },
+    image: { ...photos.studioDesk },
     meta: {
       title: "Website Design & Development in Kenya",
       description:
@@ -273,10 +266,7 @@ export const seedServices: Service[] = [
       "Monthly reporting and adjustments based on results.",
     ],
     workCategory: "marketing",
-    image: {
-      src: "/media/service-marketing.jpg",
-      alt: "Campaign planning board for a sample solar brand: weekly content plan, audience and budget split, a sponsored social post and a monthly results report",
-    },
+    image: { ...photos.campaignCans },
     meta: {
       title: "Social Media & Digital Marketing in Kenya",
       description:

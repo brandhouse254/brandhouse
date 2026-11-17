@@ -3,26 +3,73 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { defaultContent } from "./defaults";
 import { blobEnabled, paths } from "./paths";
-import type { SiteContent } from "./types";
+import { retiredSampleSlugs } from "@/content/projects";
+import { factPhotos, servicePhotos } from "./stock";
+import type { Project, SiteContent } from "./types";
 
 const HISTORY_KEEP = 40;
+
+/** Placeholder images from the first version of the site, replaced by real photography. */
+const isOldPlaceholder = (src: string | undefined) => !src || /^\/media\/(service-[a-z]+|about)\.jpg$/.test(src);
+
+/**
+ * Projects as stored, normalised to the current shape. The first illustrated
+ * sample projects are swapped for the photographic showcase once; after that
+ * the admin's choices (including deleting showcase pieces) stand.
+ */
+function migrateProjects(stored: Partial<Project>[] | undefined, d: SiteContent): Project[] {
+  if (!stored) return d.projects;
+  const hadOldSamples = stored.some((p) => p.isSample && retiredSampleSlugs.includes(p.slug ?? ""));
+  let list = stored;
+  if (hadOldSamples) {
+    list = stored.filter((p) => !(p.isSample && retiredSampleSlugs.includes(p.slug ?? "")));
+    const have = new Set(list.map((p) => p.slug));
+    list = [...list, ...d.projects.filter((p) => !have.has(p.slug))];
+  }
+  return list.map((p) => ({
+    ...(p as Project),
+    published: p.published ?? true,
+    featured: p.featured ?? false,
+    frame: p.frame ?? "photo",
+    tagline: p.tagline ?? "",
+    link: p.link ?? null,
+  }));
+}
 
 /** Stored content laid over the defaults, so fields added later in code always exist. */
 function withDefaults(stored: Partial<SiteContent>): SiteContent {
   const d = defaultContent();
   const s = stored ?? {};
+  const services = (s.services ?? d.services).map((svc) => {
+    const merged = { ...d.services[0], ...svc, aboutNote: svc.aboutNote ?? "" };
+    if (isOldPlaceholder(svc.image?.src)) merged.image = { ...(servicePhotos[svc.slug] ?? d.services[0].image) };
+    return merged;
+  });
+  const about = { ...d.about, ...s.about };
+  if (isOldPlaceholder(s.about?.image?.src)) about.image = d.about.image;
   return {
     ...d,
     ...s,
     version: 1,
     settings: { ...d.settings, ...s.settings, contact: { ...d.settings.contact, ...s.settings?.contact } },
     hero: { ...d.hero, ...s.hero },
-    intro: { ...d.intro, ...s.intro },
+    intro: {
+      ...d.intro,
+      ...s.intro,
+      facts: (s.intro?.facts ?? d.intro.facts).map((f, i) => ({ ...f, image: f.image === undefined ? { ...factPhotos[i % factPhotos.length] } : f.image })),
+    },
     difference: { ...d.difference, ...s.difference },
-    about: { ...d.about, ...s.about },
-    services: (s.services ?? d.services).map((svc) => ({ ...d.services[0], ...svc, aboutNote: svc.aboutNote ?? "" })),
-    projects: (s.projects ?? d.projects).map((p) => ({ ...p, published: p.published ?? true })),
+    about,
+    services,
+    projects: migrateProjects(s.projects, d),
     testimonials: s.testimonials ?? d.testimonials,
+    pages: {
+      home: { ...d.pages.home, ...s.pages?.home },
+      work: { ...d.pages.work, ...s.pages?.work },
+      services: { ...d.pages.services, ...s.pages?.services },
+      contact: { ...d.pages.contact, ...s.pages?.contact },
+      cta: { ...d.pages.cta, ...s.pages?.cta },
+    },
   };
 }
 
@@ -95,7 +142,7 @@ export async function writeContent(next: SiteContent, editor: string): Promise<S
     cacheControlMaxAge: 60,
   });
 
-  // Version history: one snapshot per save, newest 40 kept.
+  // Quiet backups: one snapshot per save, newest 40 kept (not shown in the admin).
   try {
     const stamp = Date.now();
     await put(`${paths.historyPrefix()}${stamp}__${encodeURIComponent(editor).slice(0, 80)}.json`, body, {

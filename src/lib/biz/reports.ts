@@ -28,7 +28,9 @@ const counts = (inv: Invoice) => inv.kind === "invoice" && inv.status !== "draft
 export async function yearReport(year: number) {
   const from = `${year}-01-01`;
   const to = `${year}-12-31`;
-  const [invoices, expenses] = await Promise.all([listInvoices({ kind: "invoice" }), listExpenses({ from, to })]);
+  const [all, expenses] = await Promise.all([listInvoices(), listExpenses({ from, to })]);
+  // Invoices count when sent; standalone receipts are money received without an invoice.
+  const invoices = all.filter((d) => counts(d) || (d.kind === "receipt" && d.status !== "void"));
   const months: MonthRow[] = Array.from({ length: 12 }, (_, i) => ({
     month: `${year}-${String(i + 1).padStart(2, "0")}`,
     invoiced: 0,
@@ -43,8 +45,7 @@ export async function yearReport(year: number) {
   const byClient = new Map<string, { name: string; received: number }>();
 
   for (const inv of invoices) {
-    if (!counts(inv)) continue;
-    const m = at(inv.issueOn);
+    const m = inv.kind === "invoice" ? at(inv.issueOn) : undefined;
     if (m) m.invoiced += inv.totals.total;
     for (const p of inv.payments) {
       const pm = at(p.paidOn);
@@ -54,7 +55,7 @@ export async function yearReport(year: number) {
       pm.receivedNet += net;
       pm.vatCollected += p.amount - net;
       const key = inv.clientId ?? "none";
-      const c = byClient.get(key) ?? { name: inv.clientName ?? "No client", received: 0 };
+      const c = byClient.get(key) ?? { name: inv.clientName ?? (inv.billTo?.company || inv.billTo?.name || "No client"), received: 0 };
       c.received += p.amount;
       byClient.set(key, c);
     }
@@ -144,9 +145,9 @@ export function invoicesCsv(invoices: Invoice[]) {
   return toCsv([
     ["Type", "Number", "Client", "Issued", "Due", "Status", "Subtotal", "Discount", "Net", "VAT", "Total", "Paid", "Balance"],
     ...invoices.map((i) => [
-      i.kind === "quote" ? "Quote" : "Invoice",
+      i.kind === "quote" ? "Quote" : i.kind === "receipt" ? "Receipt" : "Invoice",
       i.number,
-      i.clientName ?? "",
+      i.clientName ?? i.billTo?.company ?? i.billTo?.name ?? "",
       i.issueOn,
       i.dueOn ?? "",
       i.status,
@@ -163,11 +164,11 @@ export function invoicesCsv(invoices: Invoice[]) {
 
 export function paymentsCsv(invoices: Invoice[]) {
   return toCsv([
-    ["Date", "Invoice", "Client", "Amount", "Of which VAT", "Method", "Reference", "Note"],
+    ["Date", "Receipt", "Invoice", "Client", "Amount", "Of which VAT", "Method", "Reference", "Note"],
     ...invoices
       .flatMap((i) => i.payments.map((p) => ({ i, p })))
       .sort((a, b) => a.p.paidOn.localeCompare(b.p.paidOn))
-      .map(({ i, p }) => [p.paidOn, i.number, i.clientName ?? "", p.amount, r2(p.amount - p.amount * netShare(i)), p.method, p.reference, p.note]),
+      .map(({ i, p }) => [p.paidOn, p.receiptNo, i.kind === "receipt" ? "" : i.number, i.clientName ?? i.billTo?.company ?? i.billTo?.name ?? "", p.amount, r2(p.amount - p.amount * netShare(i)), p.method, p.reference, p.note]),
   ]);
 }
 

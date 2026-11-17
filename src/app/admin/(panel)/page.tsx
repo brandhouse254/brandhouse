@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  FileText,
   ArrowUpRight,
   Briefcase,
   CheckCircle2,
@@ -72,22 +73,24 @@ export default async function Dashboard() {
   const late = agenda?.overdueTasks ?? [];
   const dueToday = agenda?.todayTasks ?? [];
   const follow = agenda?.followUps ?? [];
+  const deadlines = agenda?.dueProjects ?? [];
   const summary = [
     late.length + dueToday.length ? `${late.length + dueToday.length} task${late.length + dueToday.length === 1 ? "" : "s"} due` : null,
     follow.length ? `${follow.length} follow-up${follow.length === 1 ? "" : "s"}` : null,
     agenda?.newLeads ? `${agenda.newLeads} new lead${agenda.newLeads === 1 ? "" : "s"}` : null,
+    agenda?.dueProjects.length ? `${agenda.dueProjects.length} project deadline${agenda.dueProjects.length === 1 ? "" : "s"} close` : null,
   ].filter(Boolean);
 
   const openLeads = leads.filter((l) => ["new", "contacted", "proposal"].includes(l.stage));
   const activeProjects = projects.filter((p) => p.status === "active" || p.status === "planning").slice(0, 4);
-  const heroImage = content.hero.image.src;
+  const heroImage = content.hero.reel[0]?.src ?? content.hero.image.src;
 
   // Website checklist
   const realWork = content.projects.filter((p) => !p.isSample && p.published);
   const checklist = [
-    { done: content.hero.image.src.includes("blob.vercel-storage.com"), label: "Your own hero image", href: "/admin/homepage" },
+    { done: content.hero.reel.some((f) => f.src.includes("blob.vercel-storage.com")), label: "Your own photos in the hero reel", href: "/admin/homepage" },
     { done: realWork.length > 0, label: "First real client project", href: "/admin/work/new" },
-    { done: !content.settings.showSampleProjects, label: "Sample projects hidden", href: "/admin/settings" },
+    { done: realWork.some((p) => p.featured), label: "A client project featured on the homepage", href: "/admin/work" },
     { done: activeSocialLinks(content).length > 0, label: "Social links added", href: "/admin/settings" },
     { done: content.testimonials.length > 0, label: "A client testimonial", href: "/admin/testimonials" },
   ];
@@ -96,6 +99,7 @@ export default async function Dashboard() {
   const websiteTiles = [
     { href: "/admin/homepage", label: "Homepage", icon: Home },
     { href: "/admin/work", label: "Portfolio", icon: Briefcase },
+    { href: "/admin/pages", label: "Page text", icon: FileText },
     { href: "/admin/services", label: "Services", icon: Sparkles },
     { href: "/admin/about", label: "About", icon: Info },
     { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
@@ -182,7 +186,7 @@ export default async function Dashboard() {
         <Card title="Today" href="/admin/tasks" linkLabel="All tasks" className="md:col-span-6 xl:col-span-7">
           {!db ? (
             <p className="text-sm text-mute-2">Tasks appear here once the database is connected.</p>
-          ) : late.length + dueToday.length + follow.length === 0 ? (
+          ) : late.length + dueToday.length + follow.length + deadlines.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center rounded-2xl bg-paper/60 py-10 text-center">
               <CheckCircle2 className="size-8 text-emerald-700" aria-hidden />
               <p className="mt-2 font-medium">You&apos;re all caught up</p>
@@ -192,6 +196,26 @@ export default async function Dashboard() {
             </div>
           ) : (
             <ul className="space-y-2">
+              {deadlines.slice(0, 3).map((p) => (
+                <li key={p.id}>
+                  <Link
+                    href={`/admin/projects/${p.id}`}
+                    className={cn(
+                      "flex items-center gap-3 rounded-2xl px-3.5 py-3 ring-1",
+                      p.daysLeft < 0 ? "bg-red-50 ring-red-200 hover:ring-red-300" : "bg-amber-50 ring-amber-200 hover:ring-amber-300",
+                    )}
+                  >
+                    <Briefcase className={cn("size-5 shrink-0", p.daysLeft < 0 ? "text-red-700" : "text-amber-700")} aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 block font-medium leading-snug">{p.name}</span>
+                      <span className="block truncate text-xs text-mute-2">{p.clientName ? `${p.clientName} · ` : ""}Project deadline</span>
+                    </span>
+                    <Pill tone={p.daysLeft < 0 ? "red" : "amber"}>
+                      {p.daysLeft < 0 ? `${-p.daysLeft}d late` : p.daysLeft === 0 ? "Today" : p.daysLeft === 1 ? "Tomorrow" : `${p.daysLeft} days`}
+                    </Pill>
+                  </Link>
+                </li>
+              ))}
               {[...late, ...dueToday].slice(0, 7).map((t) => {
                 const due = dueLabel(t.dueOn, today);
                 return (

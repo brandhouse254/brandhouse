@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { getContent } from "@/lib/cms/store";
 import { pageMetadata } from "@/lib/seo";
-import { PageHero } from "@/components/PageHero";
+import { DarkHero, Kicker, SECTION } from "@/components/site/bits";
+import { ServiceCards } from "@/components/site/home";
 import { CtaBand } from "@/components/CtaBand";
 
 export const metadata: Metadata = pageMetadata({
@@ -14,67 +14,49 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function ServicesPage() {
-  const { services } = await getContent();
+  const { services, pages } = await getContent();
   return (
     <>
-      <PageHero
-        title="Everything a brand needs to be seen and chosen."
+      <DarkHero
+        title={pages.services.title}
         crumbs={[{ name: "Services", path: "/services" }]}
-        intro={
-          <p>
-            We are organised into {services.length === 4 ? "four" : services.length} divisions. You can hire one for a single project, or bring in several so your
-            identity, content, website and campaigns are planned together from the start.
-          </p>
-        }
+        intro={pages.services.intro ? <p>{pages.services.intro}</p> : undefined}
       />
 
-      <section aria-label="Service divisions" className="bg-paper pb-24 md:pb-36">
-        <ol className="shell">
-          {services.map((s) => (
-            <li key={s.slug} className="reveal border-t border-ink/15 py-14 md:py-20">
-              <article aria-labelledby={`division-${s.slug}`} className="grid gap-10 md:grid-cols-12 md:gap-8">
-                <div className="md:col-span-4">
-                  <span className="font-display text-sm tabular-nums text-mute-2">{s.number}</span>
-                  <h2 id={`division-${s.slug}`} className="type-h2 mt-3">
-                    <Link href={`/services/${s.slug}`} className="hover:underline hover:decoration-2 hover:underline-offset-8">
-                      {s.title}
-                    </Link>
-                  </h2>
-                  <div className="relative mt-8 aspect-[4/3] max-w-sm overflow-hidden">
-                    <Image src={s.image.src} alt={s.image.alt} fill sizes="(min-width: 768px) 30vw, 100vw" className="object-cover" />
-                  </div>
-                </div>
-                <div className="md:col-span-7 md:col-start-6">
-                  <p className="type-lead text-ink/80">{s.intro}</p>
-                  <div className="mt-10 grid gap-10 sm:grid-cols-2">
-                    <div>
-                      <h3 className="font-display text-lg font-semibold">What you get</h3>
-                      <ul className="mt-4 space-y-2 text-mute-2">
-                        {s.deliverables.map((d) => (
-                          <li key={d} className="leading-snug">{d}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h3 className="font-display text-lg font-semibold">Typical projects</h3>
-                      <ul className="mt-4 space-y-2 text-mute-2">
-                        {s.projectTypes.map((d) => (
-                          <li key={d} className="leading-snug">{d}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                  <Link
-                    href={`/services/${s.slug}`}
-                    className="mt-10 inline-flex min-h-11 items-center font-display font-medium underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink"
-                  >
-                    More about {s.title.toLowerCase()}
-                  </Link>
-                </div>
-              </article>
-            </li>
-          ))}
-        </ol>
+      <section aria-label="Service divisions" className="bg-ink pb-16 text-white md:pb-24">
+        <div className="shell">
+          <ServiceCards services={services} headingLevel="h2" />
+        </div>
+      </section>
+
+      <section aria-labelledby="included-title" className="bg-paper">
+        <div className={`shell ${SECTION}`}>
+          <Kicker>
+            <span id="included-title">What you get from each division</span>
+          </Kicker>
+          <ul className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {services.map((s) => (
+              <li key={s.slug} className="flex flex-col rounded-[1.75rem] bg-white p-7 ring-1 ring-ink/8">
+                <span className="font-display text-sm tabular-nums text-accent-deep">{s.number}</span>
+                <h3 className="type-h3 mt-3">{s.title}</h3>
+                <ul className="mt-5 flex-1 space-y-2.5 text-[0.95rem] text-mute-2">
+                  {s.deliverables.slice(0, 6).map((d) => (
+                    <li key={d} className="flex gap-2.5 leading-snug">
+                      <span aria-hidden className="mt-[0.55em] h-px w-3 shrink-0 bg-accent" />
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={`/services/${s.slug}`}
+                  className="mt-6 inline-flex min-h-11 items-center gap-2 font-display font-medium underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink"
+                >
+                  More about {s.title.toLowerCase()}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       <CtaBand

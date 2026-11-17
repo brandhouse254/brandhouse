@@ -20,7 +20,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
   if (kind === "invoices") {
     csv = invoicesCsv((await listInvoices()).filter((i) => inYear(i.issueOn)));
   } else if (kind === "payments") {
-    const invoices = (await listInvoices({ kind: "invoice" })).map((i) => ({ ...i, payments: i.payments.filter((p) => inYear(p.paidOn)) }));
+    const invoices = (await listInvoices())
+      .filter((i) => i.kind !== "quote" && i.status !== "void")
+      .map((i) => ({ ...i, payments: i.payments.filter((p) => inYear(p.paidOn)) }));
     csv = paymentsCsv(invoices);
   } else if (kind === "expenses") {
     csv = expensesCsv(year ? await listExpenses({ from: `${year}-01-01`, to: `${year}-12-31` }) : await listExpenses());

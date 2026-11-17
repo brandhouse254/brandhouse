@@ -23,6 +23,9 @@ export type TitleBody = { title: string; body: string };
 
 export type Link = { label: string; href: string };
 
+/** One photo in the moving reel beside the homepage headline. */
+export type ReelFrame = Media & { label: string };
+
 export type HeroContent = {
   eyebrow: string;
   line1: string;
@@ -36,11 +39,19 @@ export type HeroContent = {
   video: { src: string; type: string } | null;
   /** Small frozen timecode shown top-right of the hero. Empty hides it. */
   timecode: string;
+  /** Photos that drift past in the hero reel (shown in three columns). */
+  reel: ReelFrame[];
+  /** Words that rotate after "We make" on the reel. */
+  making: string[];
+  /** Words in the running ticker under the hero. Empty uses the service names. */
+  ticker: string[];
 };
 
-export type IntroContent = { title: string; statement: string; facts: TitleBody[] };
+export type IntroFact = TitleBody & { image: Media | null };
 
-export type DifferenceContent = { title: string; lead: string; points: TitleBody[] };
+export type IntroContent = { title: string; statement: string; facts: IntroFact[] };
+
+export type DifferenceContent = { title: string; lead: string; image: Media; points: TitleBody[] };
 
 export type AboutContent = {
   title: string;
@@ -113,6 +124,44 @@ export type Project = {
   video: { src: string; poster: string; title: string } | null;
   outcome: string | null;
   year?: string;
+  /** Shown in the homepage "Made to be noticed" showcase. */
+  featured: boolean;
+  /** How the cover is presented on cards. */
+  frame: ProjectFrame;
+  /** Short line used inside mock-up frames (the ad text, the website headline). */
+  tagline: string;
+  /** Optional outside link: the live website, a YouTube video, an Instagram post. */
+  link: Link | null;
+};
+
+/** How a project's cover is presented on cards: a plain photo or inside a mock-up. */
+export type ProjectFrame = "photo" | "ad" | "phone" | "browser" | "film";
+
+export const projectFrames: ProjectFrame[] = ["photo", "ad", "phone", "browser", "film"];
+
+export const projectFrameLabels: Record<ProjectFrame, string> = {
+  photo: "Photo",
+  ad: "Social ad",
+  phone: "Phone screen",
+  browser: "Website in a browser",
+  film: "Film with play button",
+};
+
+/** Headings and copy for page sections that aren't tied to one piece of content. */
+export type PagesContent = {
+  home: {
+    workTitle: string;
+    workLead: string;
+    servicesTitle: string;
+    servicesLead: string;
+    processTitle: string;
+    processLead: string;
+    testimonialsTitle: string;
+  };
+  work: { title: string; intro: string };
+  services: { title: string; intro: string };
+  contact: { title: string; intro: string; steps: TitleBody[] };
+  cta: { title: string; body: string; buttonLabel: string };
 };
 
 export type Testimonial = { quote: string; name: string; role: string; company: string };
@@ -127,6 +176,7 @@ export type SiteContent = {
   services: Service[];
   projects: Project[];
   testimonials: Testimonial[];
+  pages: PagesContent;
   updatedAt: string | null;
   updatedBy: string | null;
 };

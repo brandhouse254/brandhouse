@@ -16,11 +16,11 @@ const nav = [
 ];
 
 /**
- * Floating header for the /next concept: one compact glass bar that looks the
- * same over dark and light sections (no switch to a solid black strip), tucks
- * away while you read down the page and comes back as soon as you scroll up.
+ * Site header: one compact floating bar that looks the same over dark and
+ * light sections, tucks away while you read down the page and comes back as
+ * soon as you scroll up. On phones the menu opens as a small card.
  */
-export function NextHeader({ email, phone }: { email: string; phone: string }) {
+export function SiteHeader({ email, phone }: { email: string; phone: string }) {
   const pathname = usePathname() || "/";
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
@@ -75,7 +75,7 @@ export function NextHeader({ email, phone }: { email: string; phone: string }) {
     };
   }, [open]);
 
-  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname === "/next" : pathname === href || pathname.startsWith(`${href}/`));
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
     <header
@@ -93,8 +93,8 @@ export function NextHeader({ email, phone }: { email: string; phone: string }) {
       <div ref={wrapRef} className="relative mx-auto max-w-5xl">
         <div className="flex h-14 items-center justify-between gap-3 rounded-full bg-[#141414]/80 pl-5 pr-2 text-white shadow-[0_10px_40px_-12px_rgb(0_0_0/0.45)] ring-1 ring-white/10 backdrop-blur-xl md:h-[3.75rem]">
           <Link href="/" aria-label="Brand House home" className="-m-2 flex items-center p-2">
-            <Logo variant="mark" className="h-7" title="Brand House" />
-            <span className="ml-2.5 font-display text-[0.95rem] font-semibold tracking-[-0.02em]">Brand House</span>
+            <Logo variant="mark" className="h-[1.1rem] md:h-5" title="Brand House" />
+            <span className="ml-2 font-display text-[0.95rem] font-semibold leading-none tracking-[-0.02em] md:text-base">Brand House</span>
           </Link>
 
           <nav aria-label="Main" className="hidden md:block">

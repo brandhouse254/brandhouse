@@ -5,6 +5,13 @@ export function visibleProjects(c: SiteContent): Project[] {
   return c.projects.filter((p) => p.published && (!p.isSample || c.settings.showSampleProjects));
 }
 
+/** Projects starred for the homepage showcase, in admin order (up to six). */
+export function featuredProjects(c: SiteContent, max = 6): Project[] {
+  const visible = visibleProjects(c);
+  const starred = visible.filter((p) => p.featured);
+  return (starred.length ? starred : visible).slice(0, max);
+}
+
 export function findProject(c: SiteContent, slug: string): Project | undefined {
   return visibleProjects(c).find((p) => p.slug === slug);
 }

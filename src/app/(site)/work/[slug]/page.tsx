@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContent } from "@/lib/cms/store";
 import { findProject, relatedProjects, videoEmbedUrl, visibleProjects } from "@/lib/cms/public";
-import { workCategoryLabels } from "@/lib/cms/types";
 import { pageMetadata } from "@/lib/seo";
 import { graph, projectSchema } from "@/lib/structured-data";
-import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Corners } from "@/components/Corners";
 import { CtaBand } from "@/components/CtaBand";
 import { JsonLd } from "@/components/JsonLd";
-import { ProjectCard } from "@/components/ProjectCard";
+import { DarkHero, Kicker, SECTION } from "@/components/site/bits";
+import { kickerFor, ShowcaseCard } from "@/components/site/showcase";
+import { Pic } from "@/components/site/photo";
 
 type Params = { slug: string };
 
@@ -32,14 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   });
 }
 
-function MetaItem({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="border-t border-white/15 pt-4">
-      <dt className="type-meta text-white/55">{label}</dt>
-      <dd className="mt-1.5 leading-snug">{children}</dd>
-    </div>
-  );
-}
+const isExternal = (href: string) => /^https?:/i.test(href);
 
 export default async function CaseStudyPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
@@ -47,140 +39,152 @@ export default async function CaseStudyPage({ params }: { params: Promise<Params
   const project = findProject(content, slug);
   if (!project) notFound();
 
-  const related = relatedProjects(content, project, 2);
+  const related = relatedProjects(content, project, 3);
   const embed = project.video ? videoEmbedUrl(project.video.src) : null;
   const schema = projectSchema(project);
+  const facts = [
+    project.client ? { label: "Client", value: project.client } : null,
+    project.industry ? { label: "Industry", value: project.industry } : null,
+    project.year ? { label: "Year", value: project.year } : null,
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <>
       {schema ? <JsonLd data={graph(schema)} /> : null}
 
       <article>
-        {/* Hero */}
-        <header className="relative isolate overflow-hidden bg-ink text-white">
-          <div aria-hidden className="absolute inset-0 -z-10">
-            <Image src={project.cover.src} alt="" fill priority sizes="100vw" className="object-cover opacity-45" />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/30" />
-          </div>
-          <div className="pointer-events-none absolute inset-x-[clamp(0.75rem,2.5vw,2rem)] bottom-[clamp(0.75rem,2.5vw,2rem)] top-[5.25rem] md:top-24">
-            <Corners size="lg" />
-          </div>
-          <div className="shell flex min-h-[80svh] flex-col justify-end pb-[clamp(3rem,8vh,5rem)] pt-36">
-            <Breadcrumbs
-              items={[
-                { name: "Work", path: "/work" },
-                { name: project.title, path: `/work/${project.slug}` },
-              ]}
-              className="mb-10 text-white/75"
-            />
-            <h1 className="type-display max-w-[18ch]">{project.title}</h1>
-            <dl className="mt-12 grid grid-cols-2 gap-6 md:grid-cols-4">
-              <MetaItem label="Client">
-                {project.isSample ? "Fictional brand (sample concept)" : (project.client ?? "Confidential")}
-              </MetaItem>
-              <MetaItem label="Industry">{project.industry}</MetaItem>
-              <MetaItem label="Discipline">{project.categories.map((c) => workCategoryLabels[c]).join(", ")}</MetaItem>
-              <MetaItem label="Services">{project.services.join(", ")}</MetaItem>
-            </dl>
-          </div>
-        </header>
-
-        {project.isSample ? (
-          <aside aria-label="About this project" className="bg-accent text-ink">
-            <p className="shell py-4 font-display font-medium">
-              This is an illustrative sample concept, not completed client work. The brand is fictional and the visuals
-              are concept mock-ups.
-            </p>
-          </aside>
-        ) : null}
-
-        {/* Overview + brief */}
-        <section aria-labelledby="overview-title" className="bg-paper">
-          <div className="shell grid gap-14 py-24 md:grid-cols-12 md:py-32">
-            <div className="md:col-span-4">
-              <h2 id="overview-title" className="type-h3">
-                Overview
-              </h2>
+        <DarkHero
+          crumbs={[
+            { name: "Work", path: "/work" },
+            { name: project.title, path: `/work/${project.slug}` },
+          ]}
+          title={project.title}
+          intro={<p>{project.summary}</p>}
+          aside={
+            <div className="h-[26rem] sm:h-[32rem] lg:h-[36rem]">
+              <ShowcaseCard project={project} asLink={false} priority sizes="(min-width: 1024px) 40vw, 100vw" />
             </div>
-            <div className="md:col-span-8">
-              <p className="type-statement">{project.summary}</p>
-            </div>
-
-            <div className="md:col-span-4">
-              <h2 className="type-h3">Brief and objectives</h2>
-            </div>
-            <div className="md:col-span-8">
-              <p className="type-lead text-ink/80">{project.brief}</p>
-              <ul className="mt-8 grid gap-0">
-                {project.objectives.map((o) => (
-                  <li key={o} className="flex gap-4 border-b border-ink/12 py-4 leading-snug">
-                    <span aria-hidden className="mt-[0.45em] size-1.5 shrink-0 bg-accent" />
-                    {o}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="md:col-span-4">
-              <h2 className="type-h3">Creative direction</h2>
-            </div>
-            <div className="md:col-span-8">
-              <p className="type-lead text-ink/80">{project.creativeDirection}</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Gallery */}
-        <section aria-label="Project visuals" className="bg-ink">
-          <div className="shell grid gap-4 py-4 md:grid-cols-12 md:gap-4 md:py-4">
-            {project.video && embed ? (
-              <div className="relative aspect-video md:col-span-12">
-                <iframe
-                  src={embed}
-                  title={project.video.title || project.title}
-                  className="absolute inset-0 size-full"
-                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </div>
-            ) : project.video ? (
-              <div className="relative aspect-video md:col-span-12">
-                <video
-                  className="size-full object-cover"
-                  controls
-                  preload="none"
-                  poster={project.video.poster || undefined}
-                  title={project.video.title}
-                  playsInline
-                >
-                  <source src={project.video.src} type={project.video.src.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"} />
-                </video>
-              </div>
-            ) : null}
-            {project.gallery.map((g, i) => (
-              <figure
-                key={`${i}-${g.src}`}
-                className={
-                  i === 0
-                    ? "reveal-media relative aspect-[4/3] md:col-span-7 md:aspect-auto md:min-h-[36rem]"
-                    : "reveal-media relative aspect-[4/3] md:col-span-5 md:aspect-auto"
-                }
-              >
-                <Image src={g.src} alt={g.alt} fill sizes="(min-width: 768px) 58vw, 100vw" className="object-cover" />
-              </figure>
+          }
+        >
+          <div className="mt-8 flex flex-wrap gap-2">
+            <span className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-[#111]">{kickerFor(project)}</span>
+            {facts.map((f) => (
+              <span key={f.label} className="rounded-full bg-white/[0.07] px-3 py-1.5 text-sm text-white/80 ring-1 ring-white/10">
+                <span className="text-white/50">{f.label}:</span> {f.value}
+              </span>
             ))}
           </div>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {project.link ? (
+              <a
+                href={project.link.href}
+                {...(isExternal(project.link.href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-6 font-display font-medium text-[#111] transition-colors hover:bg-white"
+              >
+                {project.link.label} <span aria-hidden>↗</span>
+                {isExternal(project.link.href) ? <span className="sr-only"> (opens in a new tab)</span> : null}
+              </a>
+            ) : null}
+            <Link
+              href="/contact"
+              className="inline-flex h-12 items-center rounded-full px-6 font-display font-medium text-white ring-1 ring-inset ring-white/30 transition-colors hover:bg-white hover:text-ink"
+            >
+              Start a project like this
+            </Link>
+          </div>
+        </DarkHero>
+
+        {/* The story */}
+        <section aria-label="About the project" className="bg-paper">
+          <div className={`shell ${SECTION}`}>
+            {project.services.length ? (
+              <div className="mb-10 flex flex-wrap items-center gap-2">
+                <Kicker className="mr-3">What we did</Kicker>
+                {project.services.map((s) => (
+                  <span key={s} className="rounded-full bg-white px-3.5 py-1.5 text-sm ring-1 ring-ink/10">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="grid gap-4 md:grid-cols-3">
+              {project.brief ? (
+                <div className="rounded-[1.75rem] bg-white p-7 ring-1 ring-ink/8 md:p-8">
+                  <h2 className="type-h3">The brief</h2>
+                  <p className="mt-4 leading-relaxed text-mute-2">{project.brief}</p>
+                </div>
+              ) : null}
+              {project.objectives.length ? (
+                <div className="rounded-[1.75rem] bg-ink p-7 text-white md:p-8">
+                  <h2 className="type-h3">What it had to do</h2>
+                  <ol className="mt-4 space-y-3">
+                    {project.objectives.map((o, i) => (
+                      <li key={o} className="flex gap-3 leading-snug text-white/80">
+                        <span className="font-display text-sm tabular-nums text-accent">{String(i + 1).padStart(2, "0")}</span>
+                        {o}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+              {project.creativeDirection ? (
+                <div className="rounded-[1.75rem] bg-white p-7 ring-1 ring-ink/8 md:p-8">
+                  <h2 className="type-h3">Creative direction</h2>
+                  <p className="mt-4 leading-relaxed text-mute-2">{project.creativeDirection}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </section>
 
-        {/* Outcome — only verified results */}
+        {/* Film and gallery */}
+        {project.video || project.gallery.length ? (
+          <section aria-label="Project visuals" className="bg-ink">
+            <div className={`shell grid gap-4 md:grid-cols-12 ${SECTION}`}>
+              {project.video && embed ? (
+                <div className="relative aspect-video overflow-hidden rounded-[1.75rem] md:col-span-12">
+                  <iframe
+                    src={embed}
+                    title={project.video.title || project.title}
+                    className="absolute inset-0 size-full"
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              ) : project.video ? (
+                <div className="relative aspect-video overflow-hidden rounded-[1.75rem] md:col-span-12">
+                  <video className="size-full object-cover" controls preload="none" poster={project.video.poster || undefined} title={project.video.title} playsInline>
+                    <source src={project.video.src} type={project.video.src.toLowerCase().endsWith(".webm") ? "video/webm" : "video/mp4"} />
+                  </video>
+                </div>
+              ) : null}
+              {project.gallery.map((g, i) => (
+                <figure
+                  key={`${i}-${g.src}`}
+                  className={
+                    i % 3 === 0
+                      ? "relative aspect-[4/5] overflow-hidden rounded-[1.75rem] bg-[#1b1b1b] md:col-span-7 md:aspect-auto md:min-h-[34rem]"
+                      : "relative aspect-[4/5] overflow-hidden rounded-[1.75rem] bg-[#1b1b1b] md:col-span-5 md:aspect-auto md:min-h-[34rem]"
+                  }
+                >
+                  <Pic src={g.src} alt={g.alt} fill sizes="(min-width: 768px) 58vw, 100vw" className="object-cover" />
+                </figure>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* Outcome: only verified results */}
         {project.outcome ? (
           <section aria-labelledby="outcome-title" className="bg-paper">
-            <div className="shell grid gap-10 py-24 md:grid-cols-12 md:py-32">
-              <h2 id="outcome-title" className="type-h3 md:col-span-4">
-                Outcome
-              </h2>
+            <div className={`shell grid gap-6 md:grid-cols-12 ${SECTION}`}>
+              <div className="md:col-span-4">
+                <Kicker>
+                  <span id="outcome-title">Outcome</span>
+                </Kicker>
+              </div>
               <p className="type-statement md:col-span-8">{project.outcome}</p>
             </div>
           </section>
@@ -189,15 +193,22 @@ export default async function CaseStudyPage({ params }: { params: Promise<Params
 
       {related.length ? (
         <section aria-labelledby="more-work-title" className="bg-paper-2">
-          <div className="shell py-24 md:py-32">
-            <h2 id="more-work-title" className="type-h2">
-              More work
-            </h2>
-            <div className="mt-14 grid gap-14 md:grid-cols-2 md:gap-8">
-              {related.map((p) => (
-                <ProjectCard key={p.slug} project={p} />
-              ))}
+          <div className={`shell ${SECTION}`}>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <h2 id="more-work-title" className="type-display">
+                More work
+              </h2>
+              <Link href="/work" className="inline-flex min-h-11 items-center font-display font-medium underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink">
+                See all work
+              </Link>
             </div>
+            <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((p) => (
+                <li key={p.slug} className="h-[28rem] md:h-[30rem]">
+                  <ShowcaseCard project={p} sizes="(min-width: 1024px) 32vw, (min-width: 640px) 48vw, 100vw" />
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
       ) : null}

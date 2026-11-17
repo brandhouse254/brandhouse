@@ -8,6 +8,8 @@ import { notifyUsers } from "@/lib/admin/push";
 import { readUsers } from "@/lib/auth/users";
 import * as db from "./data";
 import {
+  blankClientDetails,
+  blankProjectDetails,
   expenseCategories,
   invoiceStatuses,
   leadStages,
@@ -215,12 +217,23 @@ const clientSchema = z.object({
   company: text(160),
   email: text(200).refine((v) => v === "" || z.email().safeParse(v).success, { error: "Enter a valid email address." }),
   phone: text(40),
-  kraPin: text(20)
-    .transform((v) => v.toUpperCase())
-    .refine((v) => v === "" || /^[A-Z]\d{9}[A-Z]$/.test(v), { error: "A KRA PIN looks like A123456789B." }),
   address: text(400),
   notes: text(4000),
   archived: z.boolean().default(false),
+  details: z
+    .object({
+      needs: text(4000),
+      role: text(120),
+      altPhone: text(40),
+      industry: text(120),
+      website: text(300),
+      social: text(300),
+      location: text(160),
+      source: text(160),
+    })
+    .partial()
+    .default({})
+    .transform((v) => ({ ...blankClientDetails, ...v })),
 });
 
 export async function saveClient(id: string | null, input: z.input<typeof clientSchema>): Promise<Result<{ id: string }>> {
@@ -258,6 +271,21 @@ const projectSchema = z.object({
   startOn: date,
   dueOn: date,
   budget: optionalMoney,
+  details: z
+    .object({
+      services: z.array(text(80)).max(20),
+      deliverables: text(4000),
+      contactPerson: text(120),
+      contactPhone: text(40),
+      location: text(200),
+      assetsLink: text(500),
+      priority: z.enum(["low", "normal", "high"]),
+      remindDays: z.coerce.number().int().min(0).max(60),
+      notes: text(4000),
+    })
+    .partial()
+    .optional()
+    .transform((v) => (v ? { ...blankProjectDetails, ...v } : undefined)),
 });
 
 export async function saveProject(id: string | null, input: z.input<typeof projectSchema>): Promise<Result<{ id: string }>> {
@@ -427,6 +455,23 @@ const settingsSchema = z.object({
   defaultDueDays: z.coerce.number().int().min(0).max(365),
   defaultTerms: text(2000),
   invoiceFooter: text(400),
+  receiptPrefix: text(12),
+  payOptions: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(40),
+        label: text(60).min(1, { error: "Name each payment option, e.g. M-Pesa Paybill." }),
+        details: text(600),
+      }),
+    )
+    .max(10),
+  signatureUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((v) => v === "" || /^https:\/\//i.test(v), { error: "Upload the signature again." }),
+  signatoryName: text(120),
+  signatoryTitle: text(120),
 });
 
 export async function saveBusinessSettings(input: BusinessSettings): Promise<Result> {
@@ -458,27 +503,48 @@ const invoiceSchema = z.object({
   notes: text(4000),
   terms: text(4000),
   items: z.array(itemSchema).min(1, { error: "Add at least one line." }).max(100),
+  billTo: z.object({
+    name: text(160),
+    company: text(160),
+    email: text(200),
+    phone: text(40),
+    address: text(400),
+  }),
+  projectTitle: text(200),
+  payMethods: z.array(z.string().trim().max(40)).max(10),
+  showSignature: z.boolean(),
+  /** Receipts only: how the money came in. */
+  receipt: z.object({ method: z.enum(ids(paymentMethods)), reference: text(80) }).optional(),
 });
 
-const kindSchema = z.enum(["quote", "invoice"]);
+const kindSchema = z.enum(["quote", "invoice", "receipt"]);
 
 export async function saveInvoice(id: string | null, kind: string, input: z.input<typeof invoiceSchema>): Promise<Result<{ id: string }>> {
   try {
     const me = await assertUser("owner");
     const k = kindSchema.parse(kind);
-    const d = invoiceSchema.parse(input);
-    if (!(invoiceStatuses[k] as readonly { id: string }[]).some((s) => s.id === d.status)) d.status = "draft";
-    if (!d.clientId) return { ok: false, error: "Choose who this is for." };
+    const { receipt, ...d } = invoiceSchema.parse(input);
+    if (!(invoiceStatuses[k] as readonly { id: string }[]).some((s) => s.id === d.status)) d.status = k === "receipt" ? "issued" : "draft";
+    const billTo = d.billTo.name || d.billTo.company ? d.billTo : null;
+    if (!d.clientId && !billTo) return { ok: false, error: "Choose a client or type who this is for." };
+    const data = { ...d, billTo };
+    const syncReceipt = async (docId: string) => {
+      if (k !== "receipt") return;
+      const saved = await db.getInvoice(docId);
+      if (saved) await db.setReceiptPayment(docId, saved.number, { paidOn: saved.issueOn, amount: saved.totals.total, method: receipt?.method ?? "mpesa", reference: receipt?.reference ?? "" });
+    };
     if (id) {
       const current = await db.getInvoice(id);
       if (!current) return { ok: false, error: "This document no longer exists." };
       // Payment-driven statuses are kept in step with the payments recorded.
-      await db.updateInvoice(id, { ...d, status: current.kind === "invoice" && ["partial", "paid"].includes(current.status) ? current.status : d.status });
+      await db.updateInvoice(id, { ...data, status: current.kind === "invoice" && ["partial", "paid"].includes(current.status) ? current.status : data.status });
       if (current.kind === "invoice") await db.refreshPaymentStatus(id);
+      await syncReceipt(id);
       changed();
       return { ok: true, id };
     }
-    const newId = await db.createInvoice(k, d, me.id);
+    const newId = await db.createInvoice(k, data, me.id);
+    await syncReceipt(newId);
     changed();
     return { ok: true, id: newId };
   } catch (e) {
@@ -524,6 +590,10 @@ export async function convertQuote(id: string): Promise<Result<{ id: string }>> 
         notes: quote.notes,
         terms: settings.defaultTerms,
         items: quote.items,
+        billTo: quote.billTo,
+        projectTitle: quote.projectTitle,
+        payMethods: quote.payMethods,
+        showSignature: quote.showSignature,
       },
       me.id,
       quote.id,
@@ -543,6 +613,9 @@ export async function removeDocument(id: string): Promise<Result> {
     if (!inv) return { ok: true };
     if (inv.kind === "invoice" && inv.status !== "draft") {
       return { ok: false, error: "Only drafts can be deleted. Void a sent invoice instead, so the numbering stays complete." };
+    }
+    if (inv.kind === "receipt") {
+      return { ok: false, error: "Receipts can't be deleted, so the numbering stays complete. Void it instead." };
     }
     await db.deleteInvoice(id);
     changed();

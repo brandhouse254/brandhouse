@@ -11,11 +11,11 @@ import {
   ExternalLink,
   FolderKanban,
   Globe,
-  History,
   Home,
   Images,
   Info,
   LayoutDashboard,
+  FileText,
   ListChecks,
   LogOut,
   Magnet,
@@ -63,13 +63,13 @@ const groups: { label: string; items: NavItem[] }[] = [
     label: "Website",
     items: [
       { href: "/admin/homepage", label: "Homepage", icon: Home },
+      { href: "/admin/pages", label: "Page text", icon: FileText },
       { href: "/admin/work", label: "Portfolio", icon: Briefcase },
       { href: "/admin/services", label: "Services", icon: Sparkles },
       { href: "/admin/about", label: "About page", icon: Info },
       { href: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
       { href: "/admin/settings", label: "Contact & social", icon: Phone },
       { href: "/admin/media", label: "Media library", icon: Images },
-      { href: "/admin/history", label: "Version history", icon: History },
     ],
   },
   {
@@ -82,12 +82,6 @@ const groups: { label: string; items: NavItem[] }[] = [
 ];
 
 /** The most-used screens get a tab on phones; everything is in the side menu. */
-const tabs: NavItem[] = [
-  { href: "/admin", label: "Home", icon: LayoutDashboard, exact: true },
-  { href: "/admin/leads", label: "Leads", icon: Magnet, badge: "leads" },
-  { href: "/admin/tasks", label: "Tasks", icon: ListChecks, badge: "tasks" },
-  { href: "/admin/projects", label: "Projects", icon: FolderKanban },
-];
 
 function initials(name: string, email: string) {
   const src = name.trim() || email;
@@ -313,7 +307,7 @@ export function AdminShell({
       <aside className="sticky top-0 hidden h-svh flex-col overflow-hidden border-r border-[#fff]/8 bg-[#08080a] text-[#fff] lg:flex">
         <div className={cn("flex items-center pt-5", collapsed ? "flex-col gap-3 px-2" : "justify-between gap-3 px-5")}>
           <Link href="/admin" className="flex items-center gap-2.5" aria-label="Dashboard">
-            {collapsed ? <Logo variant="mark" className="h-9 text-[#fff]" /> : <Logo className="h-9 text-[#fff]" />}
+            {collapsed ? <Logo variant="mark" className="h-6 text-[#fff]" /> : <Logo className="h-8 text-[#fff]" />}
           </Link>
           <button
             type="button"
@@ -336,8 +330,8 @@ export function AdminShell({
           <Menu className="size-5" />
         </button>
         <Link href="/admin" className="flex min-w-0 flex-1 items-center gap-2" aria-label="Dashboard">
-          <Logo variant="mark" className="h-8 text-[#fff]" />
-          <span className="truncate text-sm font-medium text-[#fff]/70">Admin</span>
+          <Logo variant="mark" className="h-[1.1rem] text-[#fff]" />
+          <span className="truncate font-display text-[0.95rem] font-semibold tracking-[-0.02em] text-[#fff]">Brand House</span>
         </Link>
         <a href="/" target="_blank" rel="noopener" className="flex h-9 items-center gap-1.5 rounded-full bg-[#fff]/8 px-3 text-sm font-medium text-[#fff] ring-1 ring-[#fff]/10">
           <Globe className="size-4 text-accent" aria-hidden /> Website
@@ -347,46 +341,11 @@ export function AdminShell({
         </Link>
       </header>
 
-      <main className="min-w-0 px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pb-24">
+      <main className="min-w-0 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pb-24">
         <div className="mx-auto max-w-6xl pt-1">
           <MediaPrefixContext.Provider value={mediaPrefix}>{children}</MediaPrefixContext.Provider>
         </div>
       </main>
-
-      {/* Phone / tablet bottom tabs */}
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-[#fff]/8 bg-[#08080a]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden">
-        <ul className="mx-auto grid max-w-xl grid-cols-5">
-          {tabs.map(({ href, label, icon: Icon, badge }) => {
-            const active = isActive(href);
-            return (
-              <li key={href}>
-                <Link
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn("relative flex h-16 flex-col items-center justify-center gap-1 text-[0.7rem] font-medium", active ? "text-[#fff]" : "text-[#fff]/50")}
-                >
-                  <span className="relative">
-                    <Icon className={cn("size-[1.35rem]", active && "text-accent")} aria-hidden />
-                    {badge ? <Count n={counts[badge]} className="absolute -right-3 -top-2" /> : null}
-                  </span>
-                  {label}
-                </Link>
-              </li>
-            );
-          })}
-          <li>
-            <button
-              type="button"
-              onClick={() => setDrawer(true)}
-              aria-expanded={drawer}
-              className={cn("flex h-16 w-full flex-col items-center justify-center gap-1 text-[0.7rem] font-medium", drawer ? "text-[#fff]" : "text-[#fff]/50")}
-            >
-              <Menu className="size-[1.35rem]" aria-hidden />
-              Menu
-            </button>
-          </li>
-        </ul>
-      </nav>
 
       {/* Side menu (phones and tablets): slides in from the left */}
       <div className={cn("fixed inset-0 z-50 lg:hidden", drawer || drag ? "" : "pointer-events-none")}>
@@ -412,7 +371,7 @@ export function AdminShell({
           style={{ transform: `translateX(${drawerOffset}px)`, paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="flex items-center justify-between px-5 pb-2 pt-4">
-            <Logo className="h-9 text-[#fff]" />
+            <Logo className="h-8 text-[#fff]" />
             <button type="button" onClick={closeDrawer} aria-label="Close menu" tabIndex={drawer ? 0 : -1} className="-mr-2 rounded-full p-2 text-[#fff]/60 hover:bg-[#fff]/10 hover:text-[#fff]">
               <X className="size-5" />
             </button>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { FileText } from "lucide-react";
 import { invoiceStatuses, kes, labelOf, type Invoice } from "@/lib/biz/types";
 import { EmptyState } from "@/components/admin/ui";
+import { recipientName } from "@/lib/biz/sheet";
 import { docTone, dueLabel, fmtDate, Pill } from "./bits";
 
 export function DocList({ docs, today, empty }: { docs: Invoice[]; today: string; empty: string }) {
@@ -14,7 +15,7 @@ export function DocList({ docs, today, empty }: { docs: Invoice[]; today: string
           <li key={d.id} className="border-b border-ink/8 last:border-b-0">
             <Link href={`/admin/finance/doc/${d.id}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-ink/4">
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{d.clientName ?? "No client"}</span>
+                <span className="block truncate font-medium">{recipientName(d) || "No client"}</span>
                 <span className="block truncate text-xs text-mute-2">
                   <span className="tabular-nums">{d.number}</span> · {fmtDate(d.issueOn)}
                 </span>
