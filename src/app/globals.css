@@ -323,3 +323,11 @@ body:has(.admin-theme) {
 .bh-words {
   animation: bh-words 10s var(--ease-out-expo) infinite;
 }
+@keyframes bh-eq {
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
+}
+.bh-eq {
+  height: 60%;
+  animation: bh-eq 1s ease-in-out infinite;
+}

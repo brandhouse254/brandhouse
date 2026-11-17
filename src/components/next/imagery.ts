@@ -31,6 +31,7 @@ export const photos = {
   carpenter: { src: u("1687422810663-c316494f725a"), alt: "Smiling carpenter at work in his wood workshop" },
 
   // More than creative
+  boardroom: { src: u("1653566031535-bcf33e1c2893"), alt: "Three colleagues in a company boardroom talking through a project on their laptops" },
   shopOwner: { src: u("1687422808311-a776f467a468"), alt: "Shop owner smiling behind the counter of her general store" },
   planningWall: { src: u("1588856122867-363b0aa7f598"), alt: "Man studying a wall of yellow sticky notes on a blue board" },
   vendorPhone: { src: u("1687422808248-f807f4ea2a2e"), alt: "Smiling food vendor checking an order on his phone" },
@@ -53,4 +54,4 @@ export const servicePhotos: Record<string, Photo> = {
 };
 
 /** Facts in the intro, one photo each (cycles if there are more facts). */
-export const factPhotos: Photo[] = [photos.shopOwner, photos.planningWall, photos.vendorPhone, photos.carpenter];
+export const factPhotos: Photo[] = [photos.boardroom, photos.planningWall, photos.vendorPhone, photos.shopOwner];

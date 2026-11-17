@@ -17,6 +17,26 @@ const SECTION = "py-16 md:py-24";
 const SWIPE =
   "-mx-[clamp(1rem,4vw,3.5rem)] flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-[clamp(1rem,4vw,3.5rem)] px-[clamp(1rem,4vw,3.5rem)] pb-2 [scrollbar-width:none] md:mx-0 md:grid md:gap-4 md:overflow-visible md:px-0 md:pb-0 [&::-webkit-scrollbar]:hidden";
 
+/** Little live equaliser, used where a status dot would normally go. */
+function Bars() {
+  return (
+    <span className="flex h-3 items-end gap-[2px]" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="bh-eq w-[3px] rounded-[1px] bg-accent" style={{ animationDelay: `${i * -0.35}s` }} />
+      ))}
+    </span>
+  );
+}
+
+/** Placeholder brand avatar for the ad and story mock-ups. */
+function Avatar({ className }: { className?: string }) {
+  return (
+    <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md bg-[#111] font-display text-[0.6rem] font-bold text-white", className)}>
+      Y.
+    </span>
+  );
+}
+
 /* ── Hero ───────────────────────────────────────────────────────────────── */
 
 type Frame = { photo: Photo; label: string };
@@ -108,7 +128,7 @@ export function NextHero({ hero, services }: { hero: HeroContent; services: Serv
       <div className="shell grid gap-10 pb-12 pt-24 md:pt-28 lg:grid-cols-12 lg:gap-12 lg:pb-16">
         <div className="lg:col-span-7 lg:pt-10">
           <p className="hero-fade inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-sm text-white/80">
-            <span className="size-2 animate-pulse rounded-full bg-accent" aria-hidden /> {hero.eyebrow}
+            <Bars /> {hero.eyebrow}
           </p>
           <h1 id="hero-title" className="type-hero mt-6 text-[clamp(3rem,7vw,8.75rem)]">
             <span className="hero-line">
@@ -163,8 +183,8 @@ export function NextIntro({ intro }: { intro: IntroContent }) {
       <div className={cn("shell", SECTION)}>
         <div className="grid gap-5 md:grid-cols-12 md:items-end">
           <div className="md:col-span-9">
-            <h2 id="intro-title" className="flex items-center gap-2 font-display text-sm font-medium text-accent-deep">
-              <span className="size-1.5 rounded-full bg-accent" aria-hidden />
+            <h2 id="intro-title" className="flex items-center gap-3 font-display text-sm font-medium text-accent-deep">
+              <span className="h-px w-8 bg-accent" aria-hidden />
               {intro.title}
             </h2>
             <p className="type-statement mt-5 max-w-[30ch]">{intro.statement}</p>
@@ -331,6 +351,9 @@ export function NextFormats() {
             <Link href="/work" className="mt-3 inline-flex min-h-11 items-center font-display font-medium underline decoration-ink/30 underline-offset-[6px] hover:decoration-ink">
               See our work
             </Link>
+            <p className="mt-2 text-sm text-mute-2 md:hidden" aria-hidden>
+              Swipe to see more →
+            </p>
           </div>
         </div>
 
@@ -342,7 +365,7 @@ export function NextFormats() {
               <div className={fade} aria-hidden />
               <div className="absolute right-4 top-4 w-44 rounded-2xl bg-white p-3 text-[#111] shadow-xl" aria-hidden>
                 <div className="flex items-center gap-2">
-                  <span className="size-6 rounded-full bg-accent" />
+                  <Avatar />
                   <div className="leading-tight">
                     <p className="text-[0.7rem] font-semibold">yourbrand</p>
                     <p className="text-[0.6rem] text-[#111]/50">Sponsored</p>
@@ -371,7 +394,7 @@ export function NextFormats() {
                   <span className="h-0.5 flex-1 rounded bg-white/45" />
                 </div>
                 <div className="absolute left-3 top-6 flex items-center gap-1.5 text-[0.65rem] font-semibold text-white" aria-hidden>
-                  <span className="size-5 rounded-full bg-accent ring-2 ring-white" /> yourbrand
+                  <Avatar className="ring-2 ring-white" /> yourbrand
                 </div>
               </div>
             </Link>
@@ -482,8 +505,10 @@ export function NextDifference({ difference }: { difference: DifferenceContent }
         <ol className={cn(SWIPE, "md:grid-cols-2 lg:col-span-6 lg:col-start-7 lg:grid-cols-1 lg:gap-3")}>
           {difference.points.map((p, i) => (
             <li key={p.title} className="w-[78vw] shrink-0 snap-start rounded-[1.75rem] bg-white p-7 ring-1 ring-ink/8 sm:w-[48vw] md:w-auto md:p-8">
-              <span className="flex size-10 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-[#111]">{i + 1}</span>
-              <h3 className="type-h3 mt-5">{p.title}</h3>
+              <span className="font-display text-sm font-medium tabular-nums text-mute-2">
+                <span className="text-accent-deep">{String(i + 1).padStart(2, "0")}</span> / {String(difference.points.length).padStart(2, "0")}
+              </span>
+              <h3 className="type-h3 mt-4">{p.title}</h3>
               <p className="mt-3 leading-relaxed text-mute-2">{p.body}</p>
             </li>
           ))}

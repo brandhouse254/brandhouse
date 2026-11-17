@@ -18,10 +18,10 @@ export default async function NextHomePage() {
   return (
     <>
       <NextHero hero={content.hero} services={content.services} />
+      <NextFormats />
       <NextIntro intro={content.intro} />
       <NextServices services={content.services} />
       <NextWork projects={visibleProjects(content)} />
-      <NextFormats />
       <NextDifference difference={content.difference} />
       <NextProcess />
       <NextTestimonials testimonials={content.testimonials} />

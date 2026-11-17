@@ -162,7 +162,7 @@ export function NextHeader({ email, phone }: { email: string; phone: string }) {
                     )}
                   >
                     {item.label}
-                    {isActive(item.href) ? <span aria-hidden className="size-1.5 rounded-full bg-accent" /> : <ArrowUpRight aria-hidden className="size-4 text-white/35" />}
+                    <ArrowUpRight aria-hidden className={cn("size-4", isActive(item.href) ? "text-accent" : "text-white/35")} />
                   </Link>
                 </li>
               ))}
