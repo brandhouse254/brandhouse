@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getContent } from "@/lib/cms/store";
 import { visibleProjects } from "@/lib/cms/public";
-import { NextCta, NextDifference, NextHero, NextIntro, NextProcess, NextServices, NextTestimonials, NextWork } from "@/components/next/home";
+import { NextCta, NextDifference, NextFormats, NextHero, NextIntro, NextProcess, NextServices, NextTestimonials, NextWork } from "@/components/next/home";
 
 /**
  * Homepage concept for approval. Uses the same content as the live homepage
@@ -21,6 +21,7 @@ export default async function NextHomePage() {
       <NextIntro intro={content.intro} />
       <NextServices services={content.services} />
       <NextWork projects={visibleProjects(content)} />
+      <NextFormats />
       <NextDifference difference={content.difference} />
       <NextProcess />
       <NextTestimonials testimonials={content.testimonials} />

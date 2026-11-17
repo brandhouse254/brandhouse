@@ -293,3 +293,33 @@ body:has(.admin-theme) {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
+
+/* /next hero reel: image columns drifting up and down, plus a rotating word. */
+@keyframes bh-reel-up {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, -50%, 0); }
+}
+@keyframes bh-reel-down {
+  from { transform: translate3d(0, -50%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes bh-words {
+  0%, 20% { transform: translateY(0); }
+  25%, 45% { transform: translateY(-20%); }
+  50%, 70% { transform: translateY(-40%); }
+  75%, 95% { transform: translateY(-60%); }
+  100% { transform: translateY(-80%); }
+}
+.bh-reel-col {
+  animation: bh-reel-up var(--reel-speed, 46s) linear infinite;
+  will-change: transform;
+}
+.bh-reel-col[data-dir="down"] {
+  animation-name: bh-reel-down;
+}
+.bh-reel:hover .bh-reel-col {
+  animation-play-state: paused;
+}
+.bh-words {
+  animation: bh-words 10s var(--ease-out-expo) infinite;
+}
