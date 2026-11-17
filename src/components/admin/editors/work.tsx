@@ -9,6 +9,7 @@ import { youtubeId, youtubeThumbnail } from "@/lib/cms/public";
 import { EditorBar, useSectionEditor } from "../editor";
 import { ImageField, VideoField } from "../media";
 import { Badge, Button, Card, Chips, EmptyState, Grid, IconButton, Repeater, Select, StringList, TextArea, TextField, Toggle } from "../ui";
+import { thumb } from "@/lib/cms/thumb";
 
 export function slugify(text: string) {
   return text
@@ -138,7 +139,7 @@ export function WorkList({ initial, showSamples }: { initial: Project[]; showSam
               <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-paper sm:h-20 sm:w-32">
                 {p.cover.src ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.cover.src} alt="" className="size-full object-cover" />
+                  <img src={thumb(p.cover.src, 384)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                 ) : null}
               </div>
               <div className="min-w-0 flex-1">
@@ -239,7 +240,7 @@ export function ProjectEditor({ projects, slug, serviceNames }: { projects: Proj
           </Link>
         }
         editor={ed}
-        viewHref={!isNew && p.published ? `/work/${p.slug}` : undefined}
+        viewHref={p.slug ? `/work/${p.slug}` : "/work"}
         extra={
           <Button variant="danger" onClick={remove}>
             <Trash2 className="size-4" /> <span className="hidden sm:inline">Delete</span>

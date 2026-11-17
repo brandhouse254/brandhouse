@@ -13,9 +13,13 @@ import { describeIssue, sectionSchemas, type SectionKey } from "@/lib/cms/schema
 import {
   CONTENT_TAG,
   ContentConflictError,
+  PREVIEW_COOKIE,
   readContent,
   writeContent,
+  writePreview,
 } from "@/lib/cms/store";
+import { cookies, draftMode } from "next/headers";
+import { randomBytes } from "node:crypto";
 import { stableStringify } from "@/lib/cms/stable";
 import type { SiteContent } from "@/lib/cms/types";
 import { deleteEnquiry, updateEnquiry } from "@/lib/admin/enquiries";
@@ -210,6 +214,38 @@ const sectionNames: Record<SectionKey, string> = {
  * rather than silently overwriting their work. Returns the stored value
  * (trimmed and normalised) so the editor can show exactly what is live.
  */
+/**
+ * Preview unpublished changes: stores the published site with this section
+ * swapped for the draft, then turns on draft mode for this browser so the
+ * public pages render it. Nothing goes live until "Save & publish".
+ */
+export async function startPreview(section: SectionKey, value: unknown): Promise<Result> {
+  try {
+    await assertUser();
+    const schema = sectionSchemas[section];
+    if (!schema) return { ok: false, error: "Unknown section." };
+    const parsed = schema.safeParse(value);
+    if (!parsed.success) return { ok: false, error: describeIssue(parsed.error) };
+    const { content } = await readContent();
+    const jar = await cookies();
+    const existing = jar.get(PREVIEW_COOKIE)?.value;
+    const token = existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing) ? existing : randomBytes(18).toString("base64url");
+    await writePreview(token, { ...content, [section]: parsed.data } as SiteContent);
+    jar.set(PREVIEW_COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 60 * 60 * 2 });
+    (await draftMode()).enable();
+    return { ok: true };
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+/** Leave preview: the site shows the published version again in this browser. */
+export async function endPreview(): Promise<Result> {
+  (await draftMode()).disable();
+  (await cookies()).delete(PREVIEW_COOKIE);
+  return { ok: true };
+}
+
 export async function saveSection(
   section: SectionKey,
   value: unknown,

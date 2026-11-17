@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { EditorBar, useSectionEditor } from "../editor";
 import { ImageField } from "../media";
 import { Card, Grid, Repeater, StringList, TextArea, TextField } from "../ui";
+import { thumb } from "@/lib/cms/thumb";
 
 type Tab = "hero" | "intro" | "difference";
 
@@ -146,7 +147,7 @@ function HeroPreview({ hero }: { hero: HeroContent }) {
           {thumbs.map((f, i) =>
             f.src ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={f.src} alt="" className="aspect-[3/4] w-full rounded-md object-cover" />
+              <img key={i} src={thumb(f.src, 384)} alt="" decoding="async" className="aspect-[3/4] w-full rounded-md object-cover" />
             ) : (
               <span key={i} className="aspect-[3/4] rounded-md bg-[#fff]/10" />
             ),

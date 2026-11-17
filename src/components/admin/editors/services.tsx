@@ -9,6 +9,7 @@ import { EditorBar, useSectionEditor } from "../editor";
 import { ImageField } from "../media";
 import { Button, Card, EmptyState, Grid, IconButton, Repeater, Select, StringList, TextArea, TextField } from "../ui";
 import { slugify } from "./work";
+import { thumb } from "@/lib/cms/thumb";
 
 const renumber = (list: Service[]) => list.map((s, i) => ({ ...s, number: String(i + 1).padStart(2, "0") }));
 
@@ -64,7 +65,7 @@ export function ServicesList({ initial }: { initial: Service[] }) {
               <div className="relative aspect-[16/7] bg-paper">
                 {s.image.src ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.image.src} alt="" className="size-full object-cover" />
+                  <img src={thumb(s.image.src, 384)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                 ) : null}
                 <span className="absolute left-3 top-3 rounded-full bg-[#000]/75 px-2.5 py-1 font-display text-xs tabular-nums text-[#fff]">{s.number}</span>
               </div>
@@ -150,7 +151,7 @@ export function ServiceEditor({ services, slug }: { services: Service[]; slug: s
           </Link>
         }
         editor={ed}
-        viewHref={isNew ? undefined : `/services/${s.slug}`}
+        viewHref={s.slug ? `/services/${s.slug}` : "/services"}
         extra={
           <Button variant="danger" onClick={remove}>
             <Trash2 className="size-4" /> <span className="hidden sm:inline">Delete</span>

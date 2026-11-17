@@ -30,6 +30,7 @@ import { kes, kesWhole, labelOf, leadStages, type Lead, type Project } from "@/l
 import { dueLabel, Pill, stageTone } from "@/components/admin/biz/bits";
 import { TaskCheck } from "@/components/admin/biz/tasks";
 import { cn } from "@/lib/cn";
+import { thumb } from "@/lib/cms/thumb";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -112,7 +113,7 @@ export default async function Dashboard() {
       {/* Greeting banner */}
       <section className="relative overflow-hidden rounded-[2rem] bg-[#141417] ring-1 ring-ink/10">
         {heroImage ? (
-          <Image src={heroImage} alt="" fill sizes="(min-width: 1024px) 70vw, 100vw" className="object-cover opacity-35" priority />
+          <Image src={thumb(heroImage, 1200)} alt="" fill unoptimized className="object-cover opacity-35" priority />
         ) : null}
         <div className="absolute inset-0 bg-[linear-gradient(100deg,#0d0d0f_15%,rgb(13_13_15/0.75)_55%,rgb(253_80_25/0.35))]" aria-hidden />
         <div className="relative flex flex-wrap items-end justify-between gap-6 p-6 sm:p-8 lg:p-10">

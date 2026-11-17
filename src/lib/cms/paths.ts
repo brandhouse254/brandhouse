@@ -27,6 +27,8 @@ export const paths = {
   enquiriesPrefix: () => `${dataRoot()}/enquiries/`,
   /** One encrypted file per device that turned notifications on. */
   pushPrefix: () => `${dataRoot()}/push/`,
+  /** Unpublished drafts opened with Preview, one per preview token. */
+  previewPrefix: () => `${dataRoot()}/preview/`,
   /** Uploaded images and videos (previews keep theirs apart from the live library). */
   mediaPrefix: mediaPrefix(),
 };

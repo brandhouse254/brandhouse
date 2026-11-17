@@ -74,6 +74,44 @@ async function registration() {
   return navigator.serviceWorker.register("/admin/sw.js", { scope: "/admin/" });
 }
 
+/** Fail with a clear message instead of spinning forever if a step never answers. */
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = window.setTimeout(() => reject(new Error(message)), ms);
+    p.then(
+      (v) => {
+        window.clearTimeout(id);
+        resolve(v);
+      },
+      (e) => {
+        window.clearTimeout(id);
+        reject(e);
+      },
+    );
+  });
+}
+
+/**
+ * The registered worker once it is active. (navigator.serviceWorker.ready
+ * never resolves on /admin itself, which sits just outside the /admin/ scope,
+ * so wait on the registration directly.)
+ */
+async function activeRegistration(): Promise<ServiceWorkerRegistration> {
+  const reg = await registration();
+  if (reg.active) return reg;
+  const worker = reg.installing ?? reg.waiting;
+  if (worker) {
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (worker.state === "activated" || reg.active) resolve();
+      };
+      worker.addEventListener("statechange", check);
+      check();
+    });
+  }
+  return reg;
+}
+
 type Status = {
   ready: boolean;
   standalone: boolean;
@@ -157,22 +195,30 @@ export function useAppStatus() {
       return perm === "denied" ? "Notifications are blocked for this site. Allow them in your device settings, then try again." : null;
     }
     try {
-      const reg = await registration();
-      await navigator.serviceWorker.ready;
+      const reg = await withTimeout(activeRegistration(), 15_000, "The app took too long to get ready. Close it, open it again and try once more.");
       const sub =
         (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey() }));
-      const r = await savePushSubscription(sub.toJSON(), navigator.userAgent);
+        (await withTimeout(
+          reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: vapidKey() }),
+          20_000,
+          "Your browser didn't answer. Check your connection and try again.",
+        ));
+      const r = await withTimeout(savePushSubscription(sub.toJSON(), navigator.userAgent), 20_000, "Couldn't reach the server. Check your connection and try again.");
+      if (r.ok) {
+        try {
+          localStorage.setItem(SYNC_KEY, `${sub.endpoint.slice(-24)}:${account}|${Date.now()}`);
+        } catch {}
+      }
       await refresh();
       return r.ok ? null : r.error;
     } catch (e) {
-      await refresh();
+      await refresh().catch(() => undefined);
       return e instanceof Error ? e.message : "Couldn't turn notifications on.";
     }
   }, [refresh]);
 
   const disablePush = useCallback(async () => {
-    const reg = await registration();
+    const reg = await withTimeout(registration(), 15_000, "The app took too long to answer.");
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
       await deletePushSubscription(sub.endpoint);
@@ -219,6 +265,8 @@ export function AppSetupPrompt() {
   const [dismissed, setDismissed] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [turnedOn, setTurnedOn] = useState(false);
+  const [testNote, setTestNote] = useState<string | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -234,7 +282,7 @@ export function AppSetupPrompt() {
 
   const needsInstall = app.ready && !app.standalone && (app.canPrompt || app.ios);
   const needsPush = app.ready && (app.push === "default" || app.push === "off");
-  const open = !dismissed && (needsInstall || needsPush);
+  const open = turnedOn || (!dismissed && (needsInstall || needsPush));
 
   const snooze = () => {
     try {
@@ -244,6 +292,46 @@ export function AppSetupPrompt() {
   };
 
   if (!open) return null;
+
+  if (turnedOn) {
+    return (
+      <div className="fixed inset-0 z-[70] flex items-end justify-center bg-[#000]/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="push-on-title">
+        <div className="w-full max-w-md rounded-t-3xl bg-[#17171a] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center text-[#f3f1ec] shadow-2xl ring-1 ring-[#fff]/10 sm:rounded-3xl">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300">
+            <Check className="size-7" aria-hidden />
+          </span>
+          <h2 id="push-on-title" className="mt-4 font-display text-xl font-semibold">
+            Notifications are on
+          </h2>
+          <p className="mt-1 text-sm text-[#9d9890]">This device will now get new leads, your tasks and the 7am reminder. You can change what you get under My account.</p>
+          {testNote ? <p className="mt-3 rounded-xl bg-[#fff]/5 px-3 py-2 text-sm">{testNote}</p> : null}
+          <div className="mt-5 grid gap-2">
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const r = await sendTestNotification();
+                setBusy(false);
+                setTestNote(r.ok ? (r.devices ? "Test sent. It should pop up in a few seconds." : "No devices found. Try turning notifications off and on again.") : r.error);
+              }}
+            >
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} Send a test notification
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setTurnedOn(false);
+                snooze();
+              }}
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // iPhone in Safari: notifications only work once the app is on the Home Screen.
   const iosInBrowser = app.ios && !app.standalone;
@@ -306,11 +394,14 @@ export function AppSetupPrompt() {
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
-                  setMessage(await app.enablePush());
+                  setMessage(null);
+                  const err = await app.enablePush();
                   setBusy(false);
+                  if (err) setMessage(err);
+                  else if (Notification.permission === "granted") setTurnedOn(true);
                 }}
               >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} Turn on notifications
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} {busy ? "Turning on…" : "Turn on notifications"}
               </Button>
             </section>
           ) : null}
@@ -400,8 +491,19 @@ export function AppSettings() {
             <BellOff className="size-4" /> Turn off
           </Button>
         ) : app.push === "default" || app.push === "off" ? (
-          <Button size="sm" variant="primary" disabled={busy} onClick={async () => { setBusy(true); setMessage(await app.enablePush()); setBusy(false); }}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} Turn on
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setMessage(null);
+              const err = await app.enablePush();
+              setBusy(false);
+              setMessage(err ?? (Notification.permission === "granted" ? "Notifications are on for this device. Send a test below to check." : null));
+            }}
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Bell className="size-4" />} {busy ? "Turning on…" : "Turn on"}
           </Button>
         ) : null}
       </div>
@@ -424,7 +526,7 @@ export function AppSettings() {
         </div>
       ) : null}
       <MyDevices endpoint={app.endpoint} push={app.push} />
-      {message ? <p className={cn("rounded-xl px-3 py-2 text-sm", message.startsWith("Test sent") ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800")}>{message}</p> : null}
+      {message ? <p className={cn("rounded-xl px-3 py-2 text-sm", message.startsWith("Test sent") || message.startsWith("Notifications are on") ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800")}>{message}</p> : null}
     </div>
   );
 }

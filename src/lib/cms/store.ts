@@ -1,5 +1,6 @@
 import { del, get, list, put } from "@vercel/blob";
 import { unstable_cache } from "next/cache";
+import { cookies, draftMode } from "next/headers";
 import { cache } from "react";
 import { defaultContent } from "./defaults";
 import { blobEnabled, paths } from "./paths";
@@ -103,7 +104,53 @@ const cachedContent = unstable_cache(async () => (await readContent()).content, 
  * Content for public pages. Cached (and the pages built from it) until the
  * admin publishes; see refreshSite in src/lib/admin/actions.ts.
  */
-export const getContent = cache(async (): Promise<SiteContent> => cachedContent());
+export const getContent = cache(async (): Promise<SiteContent> => (await previewContent()) ?? cachedContent());
+
+/** The cookie holding which unpublished draft this browser is previewing. */
+export const PREVIEW_COOKIE = "bh_preview";
+
+/**
+ * While an admin previews unpublished changes (Next.js draft mode is on and a
+ * preview token is set), public pages render from that draft instead of the
+ * published content. Everyone else always gets the published site.
+ */
+async function previewContent(): Promise<SiteContent | null> {
+  let enabled = false;
+  try {
+    enabled = (await draftMode()).isEnabled;
+  } catch {
+    return null; // outside a request (build time, sitemap generation)
+  }
+  if (!enabled) return null;
+  const token = (await cookies()).get(PREVIEW_COOKIE)?.value;
+  if (!token || !/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
+  if (!blobEnabled()) {
+    // Local development without storage: drafts live in a temp folder.
+    const { readFile } = await import("node:fs/promises");
+    const text = await readFile(localPreviewFile(token), "utf8").catch(() => null);
+    return text ? withDefaults(JSON.parse(text) as Partial<SiteContent>) : null;
+  }
+  const found = await readJson(`${paths.previewPrefix()}${token}.json`).catch(() => null);
+  return found ? withDefaults(found.data as Partial<SiteContent>) : null;
+}
+
+const localPreviewFile = (token: string) => `${process.env.TMPDIR || "/tmp"}/bh-preview-${token}.json`;
+
+/** Store a draft for previewing. Not published, not cached. */
+export async function writePreview(token: string, content: SiteContent): Promise<void> {
+  if (!blobEnabled()) {
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(localPreviewFile(token), JSON.stringify(content));
+    return;
+  }
+  await put(`${paths.previewPrefix()}${token}.json`, JSON.stringify(content), {
+    access: "public",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: "application/json",
+    cacheControlMaxAge: 0,
+  });
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

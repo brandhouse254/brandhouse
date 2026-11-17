@@ -7,6 +7,7 @@ import { listMedia, youtubeDetails, type MediaItem } from "@/lib/admin/actions";
 import { videoEmbedUrl, youtubeId, youtubeThumbnail } from "@/lib/cms/public";
 import { cn } from "@/lib/cn";
 import { Button, Field, formatBytes, inputClass, TextField } from "./ui";
+import { thumb } from "@/lib/cms/thumb";
 
 /* ───────────── Upload ───────────── */
 
@@ -217,7 +218,7 @@ export function MediaLibrary({
                   <div className="relative aspect-[4/3] bg-ink/5">
                     {item.kind === "image" ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.url} alt="" loading="lazy" className="size-full object-cover" />
+                      <img src={thumb(item.url, 384)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                     ) : item.kind === "video" ? (
                       <video src={`${item.url}#t=0.5`} muted preload="metadata" className="size-full object-cover" />
                     ) : null}
@@ -273,7 +274,7 @@ export function ImageField<T extends ImageValue>({
           <div className={cn("relative overflow-hidden rounded-xl bg-[repeating-conic-gradient(#1f1f23_0_25%,#17171a_0_50%)] bg-[length:16px_16px] ring-1 ring-ink/10", aspect)}>
             {value.src ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={value.src} alt="" className="absolute inset-0 size-full object-cover" />
+              <img src={thumb(value.src, 640)} alt="" decoding="async" className="absolute inset-0 size-full object-cover" />
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink/40">
                 <ImageIcon className="size-8" aria-hidden />

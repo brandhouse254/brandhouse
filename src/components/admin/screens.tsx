@@ -27,6 +27,7 @@ import type { PublicUser, Role } from "@/lib/auth/users";
 import { cn } from "@/lib/cn";
 import { useUploader } from "./media";
 import { Badge, Button, Card, EmptyState, formatBytes, Grid, Select, TextField, timeAgo } from "./ui";
+import { thumb } from "@/lib/cms/thumb";
 
 /* ───────────── Media library ───────────── */
 
@@ -137,7 +138,7 @@ export function MediaScreen() {
             <div className="relative aspect-[4/3] bg-ink/5">
               {item.kind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.url} alt="" loading="lazy" className="size-full object-cover" />
+                <img src={thumb(item.url, 384)} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
               ) : item.kind === "video" ? (
                 <video src={`${item.url}#t=0.5`} muted preload="metadata" className="size-full object-cover" />
               ) : null}

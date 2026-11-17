@@ -146,7 +146,7 @@ export function TestimonialsEditor({ initial }: { initial: Testimonial[] }) {
         title="Testimonials"
         description="Client quotes on the homepage. The section stays hidden until you add at least one."
         editor={ed}
-        viewHref="/#testimonials-title"
+        viewHref="/#voices-title"
       />
       {ed.value.length === 0 ? (
         <EmptyState
